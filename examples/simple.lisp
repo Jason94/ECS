@@ -9,7 +9,7 @@
    #:io/term
    #:io/simple-io
    #:ecs
-   #:ecs-utils
+   #:ecs/utils
    )
   (:local-nicknames
    )

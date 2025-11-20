@@ -10,6 +10,8 @@
                 :serial t
                 :components
                 ((:file "utils")
-                 (:file "ecs")
+                 (:file "core")
+                 (:file "common")
+                 (:file "ltk")
                  )))
   )

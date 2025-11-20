@@ -5,11 +5,15 @@
    #:coalton-prelude
    #:coalton-library/classes
    #:coalton-library/monad/environment
+   #:coalton-library/experimental/do-control-loops
    #:io/monad-io
    #:io/term
    #:io/simple-io
+   #:io/thread
    #:ecs
-   #:ecs-utils
+   #:ecs/utils
+   #:ecs/common-components
+   #:ecs/tk
    )
   (:local-nicknames
    )
@@ -17,60 +21,20 @@
 
 (in-package :ecs-asteroids)
 
-(cl:defun simple2 ()
-  (ltk:with-ltk ()
-    (cl:let* ((canvas (cl:make-instance 'ltk:canvas :width 500 :height 400 :background :white))
-              )
-      (ltk:grid canvas 0 0 :sticky "news")
+;; (cl:defun simple2 ()
+;;   (ltk:with-ltk ()
+;;     (cl:let* ((canvas (cl:make-instance 'ltk:canvas :width 500 :height 400 :background :white))
+;;               )
+;;       (ltk:grid canvas 0 0 :sticky "news")
 
-      (cl:let ((r (ltk:make-oval canvas 250 200 270 220)))
-        (ltk:configure r :fill "blue")
-        )
-      )))
+;;       (cl:let ((r (ltk:make-oval canvas 250 200 270 220)))
+;;         (ltk:configure r :fill "blue")
+;;         )
+;;       )))
 
-;; (named-readtables:in-readtable coalton:coalton)
+(named-readtables:in-readtable coalton:coalton)
 
 (coalton-toplevel
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;             Vector2               ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (derive Eq)
-  (define-type Vector2
-    (Vector2 Single-Float Single-Float))
-
-  (inline)
-  (declare v+ (Vector2 -> Vector2 -> Vector2))
-  (define (v+ (Vector2 ax ay) (Vector2 bx by))
-    (Vector2 (+ ax bx) (+ ay by)))
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;            Components             ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (derive Eq)
-  (repr :transparent)
-  (define-type Position
-    (Position Vector2))
-
-  (derive Eq)
-  (repr :transparent)
-  (define-type Velocity
-    (Velocity Vector2))
-
-  (define-instance (Component (MapStore Position) Position))
-  (define-instance (Component (MapStore Velocity) Velocity))
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;               Draw                ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (derive Eq)
-  (define-type Draw
-    (Circle Single-Float))
-
-  (define-instance (Component (MapStore Draw) Draw))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               World               ;;;
@@ -81,39 +45,66 @@
      (Global EntityCounter)
      (MapStore Position)
      (MapStore Velocity)
-     (MapStore Draw)))
+     (MapStore Size)
+     (Unique Canvas)
+     (MapStore DrawShape)))
 
   (define-instance (Monad :m => Has World :m (Global EntityCounter) EntityCounter)
     (inline)
     (define (get-store)
       (do
-       ((World store _ _ _) <- ask-envT)
+       ((World store _ _ _ _ _) <- ask-envT)
        (pure store))))
 
   (define-instance (Monad :m => Has World :m (MapStore Position) Position)
     (inline)
     (define (get-store)
       (do
-       ((World _ store _ _) <- ask-envT)
+       ((World _ store _ _ _ _) <- ask-envT)
        (pure store))))
 
   (define-instance (Monad :m => Has World :m (MapStore Velocity) Velocity)
     (inline)
     (define (get-store)
       (do
-       ((World _ _ store _) <- ask-envT)
+       ((World _ _ store _ _ _) <- ask-envT)
        (pure store))))
 
-  (define-instance (Monad :m => Has World :m (MapStore Draw) Draw)
+  (define-instance (Monad :m => Has World :m (MapStore Size) Size)
     (inline)
     (define (get-store)
       (do
-       ((World _ _ _ store) <- ask-envT)
+       ((World _ _ _ store _ _) <- ask-envT)
        (pure store))))
+
+  (define-instance (Monad :m => Has World :m (Unique Canvas) Canvas)
+    (inline)
+    (define (get-store)
+      (do
+       ((World _ _ _ _ store _) <- ask-envT)
+       (pure store))))
+
+  (define-instance (Monad :m => Has World :m (MapStore DrawShape) DrawShape)
+    (inline)
+    (define (get-store)
+      (do
+       ((World _ _ _ _ _ store) <- ask-envT)
+       (pure store))))
+
+  (define-instance ((Has World :m :s :c) (ExplGet :m :s :c)
+                    => HasGet World :m :s :c))
+
+  (define-instance ((Has World :m :s :c) (ExplSet :m :s :c)
+                    => HasSet World :m :s :c))
+
+  (define-instance ((Has World :m :s :c) (ExplGet :m :s :c) (ExplSet :m :s :c)
+                    => HasGetSet World :m :s :c))
 
   (declare init-world (IO World))
   (define init-world
     (liftAn World
+            expl-init
+            expl-init
             expl-init
             expl-init
             expl-init
@@ -134,13 +125,19 @@
     (do
      (new-entity_
       (Tuple3
-       (Position (Vector2 0.0 0.0))
-       (Velocity (Vector2 1.0 0.0))
-       (Circle 5.0)))
+       (Position (Vector2 100.0 100.0))
+       (Velocity (Vector2 5.0 0.0))
+       (Size (Vector2 10.0 10.0))))
      (new-entity_
       (Tuple
-       (Position (Vector2 10.0 5.0))
-       (Velocity (Vector2 -0.5 0.25))))))
+       (Position (Vector2 200.0 200.0))
+       (Size (Vector2 20.0 10.0))))
+     (pure Unit)
+     ))
+     ;; (new-entity_
+     ;;  (Tuple
+     ;;   (Position (Vector2 10.0 5.0))
+     ;;   (Velocity (Vector2 -0.5 0.25))))))
 
   (declare update-positions (System_ Unit))
   (define update-positions
@@ -164,17 +161,23 @@
 
   (declare main (IO Unit))
   (define main
-    (do
+    (do-with-tk
      (w <- init-world)
+     (write-line "HI")
      (run-with w
        (do
+        (init-canvas 500 500 "white")
         initialize
-        (write-line "Initial positions:")
-        print-positions
-        update-positions
-        (write-line "After one step:")
-        print-positions
-         ))))
+        (write-line "HI 2")
+        (do-cforeach-ety (ety (Tuple (Position _) (Size _)))
+          (draw-oval ety))
+        (write-line "HI 3")
+        (do-loop-times (_ 5)
+          move-all
+          (write-line "hi")
+          )
+          ;; (sleep 10))
+        ))))
 
   (declare run-main (Unit -> Unit))
   (define (run-main)

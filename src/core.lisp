@@ -8,7 +8,7 @@
    #:coalton-library/experimental/do-control-loops
    #:io/monad-io
    #:io/simple-io
-   #:ecs-utils
+   #:ecs/utils
    )
   (:import-from #:io/mut
                 #:MonadIoVar)
@@ -17,6 +17,7 @@
    (:t #:coalton-library/types)
    (:ev #:coalton-library/monad/environment)
    (:opt #:coalton-library/optional)
+   (:tp #:coalton-library/tuple)
    (:u #:io/unique)
    (:m #:io/mut)
    (:v #:coalton-library/vector)
@@ -25,6 +26,7 @@
    (:it #:coalton-library/iterator)
    )
   (:export
+   #:Entity
    #:Component
    #:SystemT
    #:System
@@ -50,8 +52,12 @@
 
    #:Has
    #:get-store
+   #:HasGet
+   #:HasSet
+   #:HasGetSet
 
    #:get
+   #:get?
    #:exists?_
    #:exists?
    #:members_
@@ -62,8 +68,11 @@
    #:modify
    #:cmap
    #:cflatmap
+   #:do-cflatmap
    #:cforeach
    #:do-cforeach
+   #:cforeach-ety
+   #:do-cforeach-ety
 
    #:Global
    #:global-ent
@@ -132,6 +141,7 @@
     "Stores that can be initialized."
     (expl-init (:m :s)))
 
+  ;; TODO: Possible to remove proxy here?
   (define-class ((Monad :m) (Component :s :c) => ExplGet :m :s :c (:s -> :c))
     "Stores that components can be read from."
     (expl-get (:s -> EntityId -> :m :c))
@@ -144,7 +154,7 @@
   (define-class ((Monad :m) (Component :s :c) => ExplMembers :m :s :c (:s -> :c))
     "Stores that contain a list of member entities."
     ;; TODO: Optimize the return type.
-    (expl-members (:s -> t:Proxy :c -> :m (List EntityId))))
+    (expl-members (:s -> t:Proxy :c -> :m (List Entity))))
 
   (define-class ((Monad :m) (Component :s :c) => ExplDestroy :m :s :c (:s -> :c))
     "Stores that components can be removed from."
@@ -155,18 +165,15 @@
     (get-store
      (Unit -> SystemT :w :m :s)))
 
-  ;; (define-instance (Monad :m => Has :w :m EntityStore Entity)
-  ;;   (define get-store (pure EntityStore)))
+  (define-class ((Has :w :m :s :c) (ExplGet :m :s :c)
+                 => HasGet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
+
+  (define-class ((Has :w :m :s :c) (ExplSet :m :s :c)
+                 => HasSet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
+
+  (define-class ((Has :w :m :s :c) (ExplGet :m :s :c) (ExplSet :m :s :c)
+                 => HasGetSet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
   )
-
-;; (cl:defmacro Get (w m s c)
-;;   `((Has ,w ,m ,s ,c) (ExplGet ,m ,s ,c)))
-
-;; (cl:defmacro Set (w m s c)
-;;   `((Has ,w ,m ,s ,c) (ExplSet ,m ,s ,c)))
-
-;; (cl:defmacro Destroy (w m s c)
-;;   `((Destroy ,w ,m ,s ,c) (ExplDestroy ,m ,s ,c)))
 
 (coalton-toplevel
 
@@ -177,7 +184,7 @@
     (do
      (let id = (entity-id ety))
      (s <- (get-store))
-      (lift (expl-get s id))))
+     (lift (expl-get s id))))
 
   (declare exists?_ ((Has :w :m :s :c) (ExplGet :m :s :c)
                      => Entity -> t:Proxy :c -> SystemT :w :m Boolean))
@@ -186,10 +193,10 @@
     (do
      (let id = (entity-id ety))
      (s <- (get-store))
-      (lift (expl-exists? s id comp-prx))))
+     (lift (expl-exists? s id comp-prx))))
 
   (declare members_ ((Has :w :m :s :c) (ExplMembers :m :s :c)
-                     => t:Proxy :c -> SystemT :w :m (List EntityId)))
+                     => t:Proxy :c -> SystemT :w :m (List Entity)))
   (define (members_ comp-prx)
     (do
      (s <- (get-store))
@@ -202,7 +209,7 @@
     (do
      (let id = (entity-id ety))
      (s <- (get-store))
-      (lift (expl-set s id comp))))
+     (lift (expl-set s id comp))))
 
   (declare remove_ ((Has :w :m :s :c) (ExplDestroy :m :s :c)
                     => Entity -> t:Proxy :c -> SystemT :w :m Unit))
@@ -211,7 +218,7 @@
     (do
      (let id = (entity-id ety))
      (s <- (get-store))
-      (lift (expl-remove s id comp-prx))))
+     (lift (expl-remove s id comp-prx))))
 
   (declare modify ((Has :w :m :sa :ca) (Has :w :m :sb :cb)
                    (ExplGet :m :sa :ca) (ExplSet :m :sb :cb)
@@ -245,10 +252,11 @@
     (do
      (let prx-a = (proxy-of-arg f))
      (sa <- (get-store))
-      (members <- (members_ prx-a))
-      (do-foreach (ety-id members)
-        (a <- (lift (expl-get sa ety-id)))
-        (set (Entity% ety-id) (f a)))))
+     (members <- (members_ prx-a))
+     (do-foreach (ety members)
+       (let ety-id = (entity-id ety))
+       (a <- (lift (expl-get sa ety-id)))
+       (set ety (f a)))))
 
   (declare cflatmap ((Has :w :m :sa :ca) (Has :w :m :sb :cb)
                      (ExplGet :m :sa :ca) (ExplMembers :m :sa :ca)
@@ -260,11 +268,11 @@
     (do
      (let prx-a = (proxy-of-arg m-op))
      (sa <- (get-store))
-      (members <- (members_ prx-a))
-      (do-foreach (ety-id members)
-        (a <- (lift (expl-get sa ety-id)))
-        (new-comp <- (m-op a))
-        (set (Entity% ety-id) new-comp))))
+     (members <- (members_ prx-a))
+     (do-foreach (ety members)
+       (a <- (lift (expl-get sa (entity-id ety))))
+       (new-comp <- (m-op a))
+       (set ety new-comp))))
 
   (declare cforeach ((Has :w :m :sa :c)
                      (ExplGet :m :sa :c) (ExplMembers :m :sa :c)
@@ -275,10 +283,30 @@
     (do
      (let prx-a = (proxy-of-arg m-op))
      (sa <- (get-store))
-      (members <- (members_ prx-a))
-      (do-foreach (ety-id members)
-        (a <- (lift (expl-get sa ety-id)))
-        (m-op a))))
+     (members <- (members_ prx-a))
+     (do-foreach (ety members)
+       (let ety-id = (entity-id ety))
+       (a <- (lift (expl-get sa ety-id)))
+       (m-op a))))
+  )
+
+(coalton-toplevel
+
+  (declare cforeach-ety ((Has :w :m :sa :c)
+                         (ExplGet :m :sa :c) (ExplMembers :m :sa :c)
+                         => (Entity -> :c -> SystemT :w :m :a)
+                         -> SystemT :w :m Unit))
+  (define (cforeach-ety m-op)
+    "Iterate over each entity and its component using M-OP."
+    ;; TODO: Write a fused version, like above comment.
+    (do
+     (let prx-a = (proxy-of-arg2 m-op))
+     (sa <- (get-store))
+     (members <- (members_ prx-a))
+     (do-foreach (ety members)
+       (let ety-id = (entity-id ety))
+       (a <- (lift (expl-get sa ety-id)))
+       (m-op ety a))))
   )
 
 (cl:defmacro exists? (ety comp-type)
@@ -295,6 +323,19 @@
 (cl:defmacro do-cforeach (comp-form cl:&body body)
   `(cforeach
     (fn (,comp-form)
+      (do
+       ,@body
+       (pure Unit)))))
+
+(cl:defmacro do-cflatmap (comp-form cl:&body body)
+  `(cflatmap
+    (fn (,comp-form)
+      (do
+       ,@body))))
+
+(cl:defmacro do-cforeach-ety ((ety comp-form) cl:&body body)
+  `(cforeach-ety
+    (fn (,ety ,comp-form)
       (do
        ,@body))))
 
@@ -396,7 +437,7 @@
          ((None)
           (pure Nil))
          ((Some (Tuple ety-id _))
-          (pure (make-list ety-id)))))))
+          (pure (make-list (Entity% ety-id))))))))
 
   (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
                     => ExplDestroy :m (Unique :c) :c)
@@ -456,8 +497,8 @@
     (inline)
     (define (expl-members (MapStore% var) _)
       (do
-       (map <- (m:read var))
-       (pure (it:collect! (hm:keys map))))))
+       (m <- (m:read var))
+       (pure (map Entity% (it:collect! (hm:keys m)))))))
 
   (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
                     => ExplDestroy :m (MapStore :c) :c)
@@ -561,7 +602,7 @@
               (expl-set s1 ety-id c1)
               (expl-set s2 ety-id c2))))
 
-  (define-instance ((ExplMembers :m :s1 :c1) (ExplMembers :m :s2 :c2)
+  (define-instance ((ExplMembers :m :s1 :c1) (ExplGet :m :s2 :c2)
                     => ExplMembers :m (Tuple :s1 :s2) (Tuple :c1 :c2))
     (inline)
     (define (expl-members (Tuple s1 s2) c1c2-prox)
@@ -571,11 +612,11 @@
       (let prx-c2 = (as-proxy-of-tup2 c1c2-prox))
       (do
        (members1 <- (expl-members s1 prx-c1))
-       (members2 <- (expl-members s2 prx-c2))
-        (pure (l:filter
-               (fn (x)
-                 (contains? x members2))
-               members1)))))
+       (members2 <- (filterM
+                     (fn (ent)
+                       (expl-exists? s2 (entity-id ent) prx-c2))
+                     members1))
+       (pure members2))))
 
   (define-instance ((Has :m :w :s1 :c1) (Has :m :w :s2 :c2)
                     => Has :m :w (Tuple :s1 :s2) (Tuple :c1 :c2))
@@ -625,8 +666,8 @@
               (expl-set s3 ety-id c3))))
 
   (define-instance ((ExplMembers :m :s1 :c1)
-                    (ExplMembers :m :s2 :c2)
-                    (ExplMembers :m :s3 :c3)
+                    (ExplGet :m :s2 :c2)
+                    (ExplGet :m :s3 :c3)
                     => ExplMembers :m
                     (Tuple3 :s1 :s2 :s3)
                     (Tuple3 :c1 :c2 :c3))
@@ -639,13 +680,19 @@
       (let prx-c3 = (as-proxy-of-tup33 c1c2c3-prox))
       (do
        (members1 <- (expl-members s1 prx-c1))
-       (members2 <- (expl-members s2 prx-c2))
-        (members3 <- (expl-members s3 prx-c3))
-        (pure (l:filter
-               (fn (x)
-                 (and (contains? x members2)
-                      (contains? x members3)))
-               members1)))))
+       (members2 <- (filterM (fn (ent)
+                               (expl-exists?
+                                s2
+                                (entity-id ent)
+                                prx-c2))
+                             members1))
+       (members3 <- (filterM (fn (ent)
+                               (expl-exists?
+                                s3
+                                (entity-id ent)
+                                prx-c3))
+                             members2))
+       (pure members3))))
 
   (define-instance ((Has :m :w :s1 :c1)
                     (Has :m :w :s2 :c2)
@@ -660,4 +707,51 @@
        (s2 <- (get-store))
         (s3 <- (get-store))
         (pure (Tuple3 s1 s2 s3)))))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;       Composite Components        ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (define-type (OptionalStore :s)
+    "Composite store used to produce values of type (Optional :a).
+Will always return True for expl-exists?. Writing can both set and
+delete a component using Some and None, respectively."
+    (OptionalStore :s))
+
+  (define-instance (Component :s :c => Component (OptionalStore :s) (Optional :c)))
+
+  (define-instance (Has :w :m :s :c => Has :w :m (OptionalStore :s) (Optional :c))
+    (inline)
+    (define (get-store)
+      (map OptionalStore (get-store))))
+
+  (define-instance (ExplGet :m :s :c => ExplGet :m (OptionalStore :s) (Optional :c))
+    (inline)
+    (define (expl-get (OptionalStore s) ety-id)
+      (do
+       (let c-prx = t:Proxy)
+       (e? <- (expl-exists? s ety-id c-prx))
+       (if e?
+           (do
+            (c <- (expl-get s ety-id))
+            (pure (Some (t:as-proxy-of c c-prx))))
+           (pure None))))
+    (inline)
+    (define (expl-exists? _ _ _)
+      (pure True)))
+
+  (define-instance ((ExplSet :m :s :c) (ExplDestroy :m :s :c) =>
+                    ExplSet :m (OptionalStore :s) (Optional :c))
+    (inline)
+    (define (expl-set (OptionalStore s) ety-id c?)
+      (let c-prx = (t:proxy-inner (t:proxy-of c?)))
+      (match c?
+        ((None)
+         (expl-remove s ety-id c-prx))
+        ((Some c)
+         (expl-set s ety-id c)))))
+
   )

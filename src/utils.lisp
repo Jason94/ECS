@@ -12,7 +12,9 @@
    #:contains?
    #:contains-where?
    #:liftAn
+   #:filterM
    #:proxy-of-arg
+   #:proxy-of-arg2
    #:as-proxy-of-tup1
    #:as-proxy-of-tup2
 
@@ -21,7 +23,7 @@
    #:as-proxy-of-tup33
    ))
 
-(in-package :ecs-utils)
+(in-package :ecs/utils)
 
 (named-readtables:in-readtable coalton:coalton)
 
@@ -41,6 +43,19 @@
        (if (f x)
            True
            (contains-where? f rem)))))
+
+  (declare filterM (Applicative :m => (:a -> :m Boolean) -> List :a -> :m (List :a)))
+  (define (filterM m? lst)
+    (foldr
+     (fn (elt)
+       (liftA2
+        (fn (keep?)
+          (if keep?
+              (Cons elt)
+              id))
+        (m? elt)))
+     (pure Nil)
+     lst))
   )
 
 (coalton-toplevel
@@ -68,6 +83,10 @@
 
   (declare proxy-of-arg ((:a -> :b) -> t:Proxy :a))
   (define (proxy-of-arg _)
+    t:Proxy)
+
+  (declare proxy-of-arg2 ((:a -> :b -> :c) -> t:Proxy :b))
+  (define (proxy-of-arg2 _)
     t:Proxy)
 
   (declare as-proxy-of-tup1 (t:Proxy (Tuple :a :b) -> t:Proxy :a))
