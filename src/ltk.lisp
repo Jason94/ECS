@@ -33,6 +33,7 @@
    #:make-oval
    #:configure-oval
    #:move-shape
+   #:coords-shape
 
    #:DrawShape
 
@@ -68,7 +69,8 @@
                (run! m-op)))
     (wrap-io
       (lisp :a (ms f)
-        (ltk:after ms f))
+        (ltk:after ms (cl:lambda ()
+                        (call-coalton-function f))))
       Unit))
 
   (declare after (MonadUnliftIO :m => UFix -> :m :a -> :m Unit))
@@ -132,25 +134,29 @@
          (lisp :a (s dx dy)
            (ltk:move s dx dy))
          Unit))))
+
+  (declare coords-shape (MonadIo :m => DrawShape -> Vector2 -> Vector2 -> :m Unit))
+  (define (coords-shape s pos size)
+    "Set coordinates of S."
+    (match s
+      ((Oval s)
+       (let (Vector2 x y) = pos)
+       (let (Vector2 w h) = size)
+       (let x1 = (- x (/ w 2)))
+       (let y1 = (- y (/ h 2)))
+       (let x2 = (+ x (/ w 2)))
+       (let y2 = (+ y (/ h 2)))
+       (wrap-io
+         (lisp :a (s x1 y1 x2 y2)
+           (cl:setf (ltk:coords s) (cl:list (cl:list x1 y1)
+                                            (cl:list x2 y2))))
+         Unit))))
   )
 
 (cl:defmacro do-with-tk (cl:&body body)
   `(with-tk
        (do
         ,@body)))
-
-;; (coalton-toplevel
-;;   (declare foo (IO Unit))
-;;   (define foo
-;;     (do-with-tk
-;;       (canvas <- (make-canvas 500 400 "white"))
-;;       (grid canvas 0 0)
-;;       (oval <- (make-oval canvas 250 250 270 220))
-;;       (configure-oval oval "blue")
-;;       (pure Unit)
-;;       )))
-
-;; (coalton (run-io! foo))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;          Integrate ECS            ;;;
@@ -177,7 +183,7 @@
   (declare draw-oval-with ((MonadIo :m) (MonadIoTerm :m)
                            (HasGet :w :m (Unique Canvas) Canvas)
                            (HasSet :w :m (MapStore DrawShape) DrawShape)
-                           => Entity -> Vector2 -> Vector2 -> SystemT :w :m Unit))
+                           => Entity -> Vector2 -> Vector2 -> SystemT :w :m Oval))
   (define (draw-oval-with ety pos size)
     (let (Vector2 x y) = pos)
     (let (Vector2 w h) = size)
@@ -188,14 +194,15 @@
     (do
      (canvas <- (get global-ent))
      (o <- (make-oval canvas (round x1) (round y1) (round x2) (round y2)))
-     (set ety (Oval o))))
+     (set ety (Oval o))
+     (pure o)))
 
   (declare draw-oval ((MonadIo :m) (MonadIoTerm :m)
                       (HasGet :w :m (Unique Canvas) Canvas)
                       (HasGet :w :m (MapStore Position) Position)
                       (HasGet :w :m (MapStore Size) Size)
                       (HasSet :w :m (MapStore DrawShape) DrawShape)
-                      => Entity -> SystemT :w :m Unit))
+                      => Entity -> SystemT :w :m Oval))
   (define (draw-oval ety)
     (do
      ((Tuple (Position p) (Size s)) <- (get ety))
@@ -207,22 +214,19 @@
                      (HasGet :w :m (Unique Canvas) Canvas)
                      (HasGetSet :w :m (MapStore Position) Position)
                      (ExplMembers :m (MapStore Position) Position)
-                     (HasGet :w :m (MapStore Velocity) Velocity)
-                     (ExplMembers :m (MapStore Velocity) Velocity)
-                     (HasGet :w :m (MapStore DrawShape) DrawShape)
-                     (ExplMembers :m (MapStore DrawShape) DrawShape)
+                     (HasGetMembers :w :m (MapStore Velocity) Velocity)
+                     (HasGetMembers :w :m (MapStore DrawShape) DrawShape)
+                     (HasGetMembers :w :m (MapStore Size) Size)
                      => SystemT :w :m Unit))
   (define move-all
     "Move all (Position Velocity) components by their velocity. If they
 have a DrawShape component, also move the shape by the velocity to match."
-    (do-cflatmap (Tuple3 (Position p) (Velocity v) s?)
-      (let _x = (the (Optional DrawShape) s?))
+    (do-cflatmap (Tuple4 (Position p) (Velocity v) (Size sz) s?)
+      (let _ = (the (Optional DrawShape) s?))
       ;; We have to be careful to handle the rounding so the internal and
       ;; drawn positions don't get out of sync.
       (let new-pos = (v+ p v))
       (do-when-val (s s?)
-        (let (Vector2 x1 y1) = p)
-        (let (Vector2 x2 y2) = new-pos)
-        (move-shape s (round (- x2 x1)) (round (- y2 y1))))
+        (coords-shape s new-pos sz))
       (pure (Position new-pos))))
   )

@@ -13,7 +13,10 @@
    )
   (:export
    #:Vector2
+   #:v-x
+   #:v-y
    #:v+
+   #:v-
    #:Position
    #:Velocity
    #:Size)
@@ -34,9 +37,29 @@
     (Vector2 Single-Float Single-Float))
 
   (inline)
+  (declare v-x (Vector2 -> Single-Float))
+  (define (v-x (Vector2 x _))
+    x)
+
+  (inline)
+  (declare v-y (Vector2 -> Single-Float))
+  (define (v-y (Vector2 _ y))
+    y)
+
+  (inline)
   (declare v+ (Vector2 -> Vector2 -> Vector2))
   (define (v+ (Vector2 ax ay) (Vector2 bx by))
     (Vector2 (+ ax bx) (+ ay by)))
+
+  (inline)
+  (declare v- (Vector2 -> Vector2 -> Vector2))
+  (define (v- (Vector2 ax ay) (Vector2 bx by))
+    (Vector2 (- ax bx) (- ay by)))
+
+  (define-instance (Into Vector2 String)
+    (inline)
+    (define (into (Vector2 x y))
+      (<> (<> (into x) ", ") (into y))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;            Components             ;;;

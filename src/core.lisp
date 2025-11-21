@@ -54,7 +54,9 @@
    #:get-store
    #:HasGet
    #:HasSet
+   #:HasMembers
    #:HasGetSet
+   #:HasGetMembers
 
    #:get
    #:get?
@@ -176,8 +178,14 @@
   (define-class ((Has :w :m :s :c) (ExplSet :m :s :c)
                  => HasSet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
 
+  (define-class ((Has :w :m :s :c) (ExplMembers :m :s :c)
+                 => HasMembers :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
+
   (define-class ((Has :w :m :s :c) (ExplGet :m :s :c) (ExplSet :m :s :c)
                  => HasGetSet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
+
+  (define-class ((Has :w :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
+                 => HasGetMembers :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
   )
 
 (coalton-toplevel
@@ -712,6 +720,106 @@
        (s2 <- (get-store))
         (s3 <- (get-store))
         (pure (Tuple3 s1 s2 s3)))))
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;               Tuple4              ;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (define-instance ((Component :s1 :c1) (Component :s2 :c2)
+                    (Component :s3 :c3) (Component :s4 :c4)
+                    => Component
+                    (Tuple4 :s1 :s2 :s3 :s4)
+                    (Tuple4 :c1 :c2 :c3 :c4)))
+
+  (define-instance ((ExplGet :m :s1 :c1)
+                    (ExplGet :m :s2 :c2)
+                    (ExplGet :m :s3 :c3)
+                    (ExplGet :m :s4 :c4)
+                    => ExplGet :m
+                    (Tuple4 :s1 :s2 :s3 :s4)
+                    (Tuple4 :c1 :c2 :c3 :c4))
+    (inline)
+    (define (expl-get (Tuple4 s1 s2 s3 s4) ety-id)
+      (liftAn Tuple4
+              (expl-get s1 ety-id)
+              (expl-get s2 ety-id)
+              (expl-get s3 ety-id)
+              (expl-get s4 ety-id)))
+    (inline)
+    (define (expl-exists? (Tuple4 s1 s2 s3 s4) ety-id prx-c1c2c3c4)
+      (liftAn (fn (a b c d) (and a (and b (and c d))))
+              (expl-exists? s1 ety-id (as-proxy-of-tup41 prx-c1c2c3c4))
+              (expl-exists? s2 ety-id (as-proxy-of-tup42 prx-c1c2c3c4))
+              (expl-exists? s3 ety-id (as-proxy-of-tup43 prx-c1c2c3c4))
+              (expl-exists? s4 ety-id (as-proxy-of-tup44 prx-c1c2c3c4)))))
+
+  (define-instance ((ExplSet :m :s1 :c1)
+                    (ExplSet :m :s2 :c2)
+                    (ExplSet :m :s3 :c3)
+                    (ExplSet :m :s4 :c4)
+                    => ExplSet :m
+                    (Tuple4 :s1 :s2 :s3 :s4)
+                    (Tuple4 :c1 :c2 :c3 :c4))
+    (define (expl-set (Tuple4 s1 s2 s3 s4) ety-id (Tuple4 c1 c2 c3 c4))
+      (liftAn (fn (_ _ _ _) Unit)
+              (expl-set s1 ety-id c1)
+              (expl-set s2 ety-id c2)
+              (expl-set s3 ety-id c3)
+              (expl-set s4 ety-id c4))))
+
+  (define-instance ((ExplMembers :m :s1 :c1)
+                    (ExplGet :m :s2 :c2)
+                    (ExplGet :m :s3 :c3)
+                    (ExplGet :m :s4 :c4)
+                    => ExplMembers :m
+                    (Tuple4 :s1 :s2 :s3 :s4)
+                    (Tuple4 :c1 :c2 :c3 :c4))
+    (inline)
+    (define (expl-members (Tuple4 s1 s2 s3 s4) c1c2c3c4-prox)
+      ;; TODO: This can probably be optimized... Check Haskell U.filterM
+      ;; Also fused.
+      (let prx-c1 = (as-proxy-of-tup41 c1c2c3c4-prox))
+      (let prx-c2 = (as-proxy-of-tup42 c1c2c3c4-prox))
+      (let prx-c3 = (as-proxy-of-tup43 c1c2c3c4-prox))
+      (let prx-c4 = (as-proxy-of-tup44 c1c2c3c4-prox))
+      (do
+       (members1 <- (expl-members s1 prx-c1))
+       (members2 <- (filterM (fn (ent)
+                               (expl-exists?
+                                s2
+                                (entity-id ent)
+                                prx-c2))
+                             members1))
+       (members3 <- (filterM (fn (ent)
+                               (expl-exists?
+                                s3
+                                (entity-id ent)
+                                prx-c3))
+                             members2))
+       (members4 <- (filterM (fn (ent)
+                               (expl-exists?
+                                s4
+                                (entity-id ent)
+                                prx-c4))
+                             members3))
+       (pure members4))))
+
+  (define-instance ((Has :m :w :s1 :c1)
+                    (Has :m :w :s2 :c2)
+                    (Has :m :w :s3 :c3)
+                    (Has :m :w :s4 :c4)
+                    => Has :m :w
+                    (Tuple4 :s1 :s2 :s3 :s4)
+                    (Tuple4 :c1 :c2 :c3 :c4))
+    (inline)
+    (define (get-store)
+      (do
+       (s1 <- (get-store))
+       (s2 <- (get-store))
+       (s3 <- (get-store))
+       (s4 <- (get-store))
+       (pure (Tuple4 s1 s2 s3 s4)))))
+
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -9,6 +9,9 @@
    (:l #:coalton-library/list)
    (:t #:coalton-library/types))
   (:export
+   #:to-ufix
+   #:to-float
+   #:clamp
    #:contains?
    #:contains-where?
    #:liftAn
@@ -21,6 +24,11 @@
    #:as-proxy-of-tup31
    #:as-proxy-of-tup32
    #:as-proxy-of-tup33
+
+   #:as-proxy-of-tup41
+   #:as-proxy-of-tup42
+   #:as-proxy-of-tup43
+   #:as-proxy-of-tup44
    ))
 
 (in-package :ecs/utils)
@@ -28,6 +36,21 @@
 (named-readtables:in-readtable coalton:coalton)
 
 (coalton-toplevel
+
+  (declare to-ufix (Integer -> UFix))
+  (define (to-ufix x)
+    (lisp UFix (x)
+      x))
+
+  (declare to-float (Integer -> Single-Float))
+  (define (to-float x)
+    (lisp Single-Float (x)
+      (cl:float x)))
+
+  (declare clamp (Ord :n => :n -> :n -> :n -> :n))
+  (define (clamp min-val max-val x)
+    "Clamp X between MIN-VAL and MAX-VAL (inclusive)."
+    (min max-val (max min-val x)))
 
   (declare contains? (Eq :a => :a -> List :a -> Boolean))
   (define (contains? elt lst)
@@ -107,5 +130,21 @@
 
   (declare as-proxy-of-tup33 (t:Proxy (Tuple3 :a :b :c) -> t:Proxy :c))
   (define (as-proxy-of-tup33 _)
+    t:Proxy)
+
+  (declare as-proxy-of-tup41 (t:Proxy (Tuple4 :a :b :c :d) -> t:Proxy :a))
+  (define (as-proxy-of-tup41 _)
+    t:Proxy)
+
+  (declare as-proxy-of-tup42 (t:Proxy (Tuple4 :a :b :c :d) -> t:Proxy :b))
+  (define (as-proxy-of-tup42 _)
+    t:Proxy)
+
+  (declare as-proxy-of-tup43 (t:Proxy (Tuple4 :a :b :c :d) -> t:Proxy :c))
+  (define (as-proxy-of-tup43 _)
+    t:Proxy)
+
+  (declare as-proxy-of-tup44 (t:Proxy (Tuple4 :a :b :c :d) -> t:Proxy :d))
+  (define (as-proxy-of-tup44 _)
     t:Proxy)
   )
