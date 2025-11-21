@@ -36,12 +36,12 @@
    #:oval-bbox
    #:oval-coords
    #:oval-size
-   #:oval-pos
+   ;; #:oval-pos
    #:configure-oval
 
    #:Polygon
    #:make-polygon
-   #:polygon-coords
+   ;; #:polygon-coords
    #:configure-polygon
 
    #:move-shape
@@ -137,17 +137,19 @@
      ;; Subtracting 2 for the border width on each side
      ;; TODO: Get the actual width, in case it's non-standard.
      ((Tuple4 x1 y1 x2 y2) <- (oval-bbox oval))
+     (bb <- (oval-bbox oval))
+     (wrap-io (traceobject "bb" bb))
      (pure (Vector2 (to-float (- (- x2 x1) 2))
                     (to-float (- (- y2 y1) 2))))))
 
   ;; TODO: this doesn't actually work! ltk:coords is unimplemented
-  (declare oval-pos (MonadIo :m => Oval -> :m Vector2))
-  (define (oval-pos oval)
-    (error "Need to replace oval-pos implementation")
-    (wrap-io
-      (ints->v
-       (lisp (List Integer) (oval)
-         (ltk:coords oval)))))
+  ;; (declare oval-pos (MonadIo :m => Oval -> :m Vector2))
+  ;; (define (oval-pos oval)
+  ;;   (error "Need to replace oval-pos implementation")
+  ;;   (wrap-io
+  ;;     (ints->v
+  ;;      (lisp (List Integer) (oval)
+  ;;        (ltk:coords oval)))))
 
   (declare configure-oval (MonadIo :m => Oval -> String -> String -> :m Unit))
   (define (configure-oval shape property val)
@@ -166,13 +168,12 @@
       (lisp :a (canvas int-coords)
         (ltk:make-polygon canvas int-coords))))
 
-  (declare polygon-coords (MonadIo :m => Polygon -> :m (List Vector2)))
-  (define (polygon-coords shape)
-    (wrap-io
-      (map ints->v
-           (lisp (List (List Integer)) (shape)
-             (cl:format cl:t "coords: ~a~%" (ltk:coords shape))
-             (ltk:coords shape)))))
+  ;; (declare polygon-coords (MonadIo :m => Polygon -> :m (List Vector2)))
+  ;; (define (polygon-coords shape)
+  ;;   (wrap-io
+  ;;     (map ints->v
+  ;;          (lisp (List (List Integer)) (shape)
+  ;;            (ltk:coords shape)))))
 
   (declare configure-polygon (MonadIo :m => Polygon -> String -> String -> :m Unit))
   (define (configure-polygon s property val)
@@ -182,26 +183,26 @@
       Unit))
 
   (define-type DrawShape
-    (Oval Oval)
-    (Polygon Polygon))
+    (Oval Oval Vector2)
+    (Polygon Polygon (List Vector2)))
 
   (declare configure-shape (MonadIo :m => DrawShape -> String -> String -> :m Unit))
   (define (configure-shape shape property val)
     (match shape
-      ((Oval s)
+      ((Oval s _)
        (configure-oval s property val))
-      ((Polygon s)
+      ((Polygon s _)
        (configure-polygon s property val))))
 
   (declare move-shape (MonadIo :m => DrawShape -> Integer -> Integer -> :m Unit))
   (define (move-shape shape dx dy)
     (match shape
-      ((Oval s)
+      ((Oval s _)
        (wrap-io
          (lisp :a (s dx dy)
            (ltk:move s dx dy))
          Unit))
-      ((Polygon s)
+      ((Polygon s _)
        (wrap-io
          (lisp :a (s dx dy)
            (ltk:move s dx dy))
@@ -212,8 +213,7 @@
     "Set coordinates of S. Sets the center of an oval to POS. Sets the first
 coord in polygons to POS."
     (do-match s
-      ((Oval s)
-       ((Vector2 w h) <- (oval-size s))
+      ((Oval s (Vector2 w h))
        (let (Vector2 x y) = pos)
        (let x1 = (- x (/ w 2)))
        (let y1 = (- y (/ h 2)))
@@ -224,16 +224,15 @@ coord in polygons to POS."
            (cl:setf (ltk:coords s) (cl:list (cl:list x1 y1)
                                             (cl:list x2 y2))))
          Unit))
-      ((Polygon p)
-       (coords <- (polygon-coords p))
+      ((Polygon p coords)
        (let c1 = (opt:from-some "Polygon missing coords"
                                 (l:head coords)))
        (let delt = (v- pos c1))
        (let new-coords = (map (v+ delt) coords))
        (let new-coords-ints = (map v->ints new-coords))
        (wrap-io
-         (lisp :a (s new-coords-ints)
-           (cl:setf (ltk:coords s) new-coords-ints))
+         (lisp :a (p new-coords-ints)
+           (cl:setf (ltk:coords p) new-coords-ints))
          Unit))))
   )
 
@@ -278,7 +277,7 @@ coord in polygons to POS."
     (do
      (canvas <- (get global-ent))
      (o <- (make-oval canvas (round x1) (round y1) (round x2) (round y2)))
-     (set ety (Oval o))
+     (set ety (Oval o size))
      (pure o)))
 
   (declare draw-oval ((MonadIo :m) (MonadIoTerm :m)
@@ -300,7 +299,7 @@ coord in polygons to POS."
     (do
      (canvas <- (get global-ent))
      (p <- (make-polygon canvas pts))
-     (set ety (Polygon p))
+     (set ety (Polygon p pts))
      (pure p)))
 
   )

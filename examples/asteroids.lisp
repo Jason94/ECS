@@ -78,7 +78,7 @@
       (new-entity
        (Tuple3
         (Position pos)
-        (Velocity (Vector2 0.0 0.0))
+        (Velocity (Vector2 1.0 0.0))
         Player)))
      (let p1 = (v- pos (Vector2 6.0 13.0)))
      (let p2 = (v+ pos (Vector2 0.0 13.0)))
@@ -164,8 +164,8 @@
      (run-with w
        (do
         (init-canvas (to-ufix width) (to-ufix height) "white")
-        (spawn-player (Vector2 300.0 300.0))
-        ;; (spawn-asteroid (Vector2 100.0 100.0) (Vector2 0.5 -0.75))
+        ;; (spawn-player (Vector2 300.0 300.0))
+        (spawn-asteroid (Vector2 0.0 0.0) (Vector2 0.5 -0.75))
         ;; (spawn-bullet (Vector2 150.0 200.0) (Vector2 1.0 1.0))
         (main-loop)
         ))))
