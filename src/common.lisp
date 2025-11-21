@@ -11,8 +11,16 @@
    #:ecs
    #:ecs/utils
    )
+  (:local-nicknames
+   (:l #:coalton-library/list)
+   (:opt #:coalton-library/optional))
+  (:import-from #:coalton-library/math/real
+   #:round)
   (:export
    #:Vector2
+   #:v->list
+   #:v->ints
+   #:ints->v
    #:v-x
    #:v-y
    #:v+
@@ -35,6 +43,27 @@
   (derive Eq)
   (define-type Vector2
     (Vector2 Single-Float Single-Float))
+
+  (inline)
+  (declare v->list (Vector2 -> List Single-Float))
+  (define (v->list (Vector2 x y))
+    (make-list x y))
+
+  (inline)
+  (declare v->ints (Vector2 -> List Integer))
+  (define (v->ints (Vector2 x y))
+    (make-list (round x) (round y)))
+
+  (inline)
+  (declare ints->v (List Integer -> Vector2))
+  (define (ints->v ints)
+    (Vector2
+     (to-float
+      (opt:from-some "List not long enough"
+                     (l:index 0 ints)))
+     (to-float
+      (opt:from-some "List not long enough"
+                     (l:index 1 ints)))))
 
   (inline)
   (declare v-x (Vector2 -> Single-Float))

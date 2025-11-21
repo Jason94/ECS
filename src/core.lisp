@@ -84,7 +84,10 @@
    #:EntityCounter
    #:next-entity
    #:new-entity
-   #:new-entity_)
+   #:new-entity_
+
+   #:define-world
+   )
   )
 
 (in-package :ecs)
@@ -868,3 +871,91 @@ delete a component using Some and None, respectively."
          (expl-set s ety-id c)))))
 
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;       Define World Macros         ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(cl:defun %world-make-pattern (index total)
+  "Return a list of argument patterns for the World constructor,
+with STORE in the INDEX position and _ elsewhere."
+  (cl:loop for i from 0 below total
+           collect (cl:if (cl:= i index)
+                          'store
+                          '_)))
+
+(cl:defun %world-expand-define-type (world-name store-specs)
+  "Generate the (define-type World ...) form."
+  `(define-type ,world-name
+     (,world-name
+      ,@(cl:mapcar (cl:lambda (spec)
+                     (cl:destructuring-bind (store-kind component) spec
+                       `(,store-kind ,component)))
+                   store-specs))))
+
+(cl:defun %world-expand-has-instance (world-name total index spec)
+  "Generate a single (define-instance (Has World ...)) for one store."
+  (cl:destructuring-bind (store-kind component) spec
+    (cl:let ((pattern (%world-make-pattern index total)))
+      `(define-instance (Monad :m
+                        => Has ,world-name :m (,store-kind ,component) ,component)
+         (inline)
+         (define (get-store)
+           (do
+            ((,world-name ,@pattern) <- ev:ask-envT)
+            (pure store)))))))
+
+(cl:defun %world-expand-has-instances (world-name store-specs)
+  "Generate all (Has World ...) instances, one per store."
+  (cl:let ((total (cl:length store-specs)))
+    (cl:loop for spec in store-specs
+             for index from 0
+             collect (%world-expand-has-instance world-name total index spec))))
+
+(cl:defun %world-expand-has-family-instances (world-name)
+  "Generate the generic Has* instances that don't depend on the fields."
+  `((define-instance ((Has ,world-name :m :s :c) (ExplGet :m :s :c)
+                      => HasGet ,world-name :m :s :c))
+    (define-instance ((Has ,world-name :m :s :c) (ExplSet :m :s :c)
+                      => HasSet ,world-name :m :s :c))
+    (define-instance ((Has ,world-name :m :s :c) (ExplMembers :m :s :c)
+                      => HasMembers ,world-name :m :s :c))
+    (define-instance ((Has ,world-name :m :s :c) (ExplGet :m :s :c) (ExplSet :m :s :c)
+                      => HasGetSet ,world-name :m :s :c))
+    (define-instance ((Has ,world-name :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
+                      => HasGetMembers ,world-name :m :s :c))))
+
+(cl:defun %world-init-symbol (world-name)
+  "Return the INIT-WORLD symbol in the same package as WORLD-NAME,
+or the current *PACKAGE* if WORLD-NAME is uninterned."
+  (cl:let* ((pkg (cl:or (cl:symbol-package world-name)
+                        cl:*package*)))
+    (cl:intern (cl:string '#:init-world) pkg)))
+
+(cl:defun %world-expand-init-world (world-name store-specs)
+  "Generate the declare/define for init-world, with one expl-init per store,
+binding INIT-WORLD in the caller's package."
+  (cl:let* ((count      (cl:length store-specs))
+            (expl-inits (cl:loop repeat count collect 'expl-init))
+            (init-sym   (%world-init-symbol world-name)))
+    `((declare ,init-sym (IO ,world-name))
+      (define ,init-sym
+        (liftAn ,world-name
+                ,@expl-inits)))))
+
+(cl:defmacro define-world (world-name store-specs)
+  "Expand (define-world World ((StoreKind Component) ...)) into:
+   - (define-type World ...)
+   - one Has-instance per store
+   - the generic Has* instances
+   - init-world declaration and definition."
+  (cl:let* ((type-form (%world-expand-define-type world-name store-specs))
+            (has-forms (%world-expand-has-instances world-name store-specs))
+            (family-forms (%world-expand-has-family-instances world-name))
+            (init-forms (%world-expand-init-world world-name store-specs)))
+    `(progn
+       ,type-form
+       ,@has-forms
+       ,@family-forms
+       ,@init-forms
+       )))

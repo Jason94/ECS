@@ -26,86 +26,34 @@
 
 (coalton-toplevel
 
+  (derive Eq)
+  (define-type Asteroid
+    Asteroid)
+
+  (define-instance (Component (MapStore Asteroid) Asteroid))
+
+  (derive Eq)
+  (define-type Bullet
+    Bullet)
+
+  (define-instance (Component (MapStore Bullet) Bullet))
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               World               ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (define-type World
-    (World
-     (Global EntityCounter)
-     (MapStore Position)
-     (MapStore Velocity)
-     (MapStore Size)
-     (Unique Canvas)
-     (MapStore DrawShape)))
 
-  (define-instance (Monad :m => Has World :m (Global EntityCounter) EntityCounter)
-    (inline)
-    (define (get-store)
-      (do
-       ((World store _ _ _ _ _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (MapStore Position) Position)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ store _ _ _ _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (MapStore Velocity) Velocity)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ _ store _ _ _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (MapStore Size) Size)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ _ _ store _ _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (Unique Canvas) Canvas)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ _ _ _ store _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (MapStore DrawShape) DrawShape)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ _ _ _ _ store) <- ask-envT)
-       (pure store))))
-
-  (define-instance ((Has World :m :s :c) (ExplGet :m :s :c)
-                    => HasGet World :m :s :c))
-
-  (define-instance ((Has World :m :s :c) (ExplSet :m :s :c)
-                    => HasSet World :m :s :c))
-
-  (define-instance ((Has World :m :s :c) (ExplMembers :m :s :c)
-                    => HasMembers World :m :s :c))
-
-  (define-instance ((Has World :m :s :c) (ExplGet :m :s :c) (ExplSet :m :s :c)
-                    => HasGetSet World :m :s :c))
-
-  (define-instance ((Has World :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
-                    => HasGetMembers World :m :s :c))
-
-  (declare init-world (IO World))
-  (define init-world
-    (liftAn World
-            expl-init
-            expl-init
-            expl-init
-            expl-init
-            expl-init
-            expl-init))
+  (define-world World
+     ((Global EntityCounter)
+      (MapStore Position)
+      (MapStore Velocity)
+      (MapStore Size)
+      (MapStore Asteroid)
+      (MapStore Bullet)
+      (Unique Canvas)
+      (MapStore DrawShape)))
   )
+
 
 (coalton-toplevel
 
@@ -116,20 +64,35 @@
   (define-type-alias (System_ :a)
     (System World :a))
 
-  (declare initialize (System_ Unit))
-  (define initialize
+  (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
+  (define (spawn-bullet pos vel)
     (do
-     (new-entity_
-      (Tuple3
-       (Position (Vector2 100.0 100.0))
-       (Velocity (Vector2 1.0 0.5))
-       (Size (Vector2 10.0 10.0))))
-     (pure Unit)
-     ))
+     (ety <-
+      (new-entity
+       (Tuple4
+        (Position pos)
+        (Velocity vel)
+        (Size (Vector2 5.0 5.0))
+        Bullet)))
+     (oval <- (draw-oval ety))
+     (configure-oval oval "fill" "orange")))
+
+  (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
+  (define (spawn-asteroid pos vel)
+    (do
+     (ety <-
+      (new-entity
+       (Tuple4
+        (Position pos)
+        (Velocity vel)
+        (Size (Vector2 10.0 10.0))
+        Asteroid)))
+     (oval <- (draw-oval ety))
+     (configure-oval oval "fill" "black")))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
-    (do-cflatmap (Tuple3 (Position v) (Size sz) s?)
+    (do-cflatmap (Tuple (Position v) s?)
       (let _ = (the (Optional DrawShape) s?))
       (let (Vector2 x y) = v)
       (let new-x =
@@ -145,7 +108,7 @@
       (let new-pos = (Vector2 new-x new-y))
       (do-when-val (s s?)
         (do-when (/= v new-pos)
-          (coords-shape s new-pos sz)))
+          (coords-shape s new-pos)))
       (pure (Position new-pos))))
 
   )
@@ -178,9 +141,8 @@
      (run-with w
        (do
         (init-canvas (to-ufix width) (to-ufix height) "white")
-        initialize
-        (do-cforeach-ety (ety (Tuple (Position _) (Size _)))
-          (draw-oval ety))
+        (spawn-asteroid (Vector2 100.0 100.0) (Vector2 0.5 -0.75))
+        (spawn-bullet (Vector2 150.0 200.0) (Vector2 1.0 1.0))
         (main-loop)
         ))))
 

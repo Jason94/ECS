@@ -7,6 +7,7 @@
    )
   (:local-nicknames
    (:l #:coalton-library/list)
+   (:opt #:coalton-library/optional)
    (:t #:coalton-library/types))
   (:export
    #:to-ufix
@@ -16,8 +17,12 @@
    #:contains-where?
    #:liftAn
    #:filterM
+   #:list-to-tup
+   #:list-to-tup4
+
    #:proxy-of-arg
    #:proxy-of-arg2
+
    #:as-proxy-of-tup1
    #:as-proxy-of-tup2
 
@@ -79,6 +84,26 @@
         (m? elt)))
      (pure Nil)
      lst))
+
+  (declare list-to-tup (List :a -> Tuple :a :a))
+  (define (list-to-tup lst)
+    (Tuple
+     (opt:from-some "List not long enough"
+                    (l:index 0 lst))
+     (opt:from-some "List not long enough"
+                    (l:index 1 lst))))
+
+  (declare list-to-tup4 (List :a -> Tuple4 :a :a :a :a))
+  (define (list-to-tup4 lst)
+    (Tuple4
+     (opt:from-some "List not long enough"
+                    (l:index 0 lst))
+     (opt:from-some "List not long enough"
+                    (l:index 1 lst))
+     (opt:from-some "List not long enough"
+                    (l:index 2 lst))
+     (opt:from-some "List not long enough"
+                    (l:index 3 lst))))
   )
 
 (coalton-toplevel

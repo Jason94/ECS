@@ -17,6 +17,8 @@
   (:import-from #:coalton-library/math/real
    #:round)
   (:local-nicknames
+   (:l #:coalton-library/list)
+   (:opt #:coalton-library/optional)
    )
   (:export
    #:with-tk
@@ -31,7 +33,16 @@
 
    #:Oval
    #:make-oval
+   #:oval-bbox
+   #:oval-coords
+   #:oval-size
+   #:oval-pos
    #:configure-oval
+
+   #:Polygon
+   #:make-polygon
+   #:polygon-coords
+
    #:move-shape
    #:coords-shape
 
@@ -110,21 +121,67 @@
       (lisp :a (canvas x1 y1 x2 y2)
         (ltk:make-oval canvas x1 y1 x2 y2))))
 
-  (declare configure-oval (MonadIo :m => Oval -> Color -> :m Unit))
-  (define (configure-oval shape fill-color)
+  (declare oval-bbox (MonadIo :m => Oval -> :m (Tuple4 Integer Integer Integer Integer)))
+  (define (oval-bbox oval)
     (wrap-io
-      (lisp :a (shape fill-color)
-        (ltk:configure shape :fill fill-color))
+      (list-to-tup4
+       (lisp (List Integer) (oval)
+         (ltk:bbox oval)))))
+
+  (declare oval-size (MonadIo :m => Oval -> :m Vector2))
+  (define (oval-size oval)
+    (do
+     ;; Subtracting 2 for the border width on each side
+     ;; TODO: Get the actual width, in case it's non-standard.
+     ((Tuple4 x1 y1 x2 y2) <- (oval-bbox oval))
+     (pure (Vector2 (to-float (- (- x2 x1) 2))
+                    (to-float (- (- y2 y1) 2))))))
+
+  (declare oval-pos (MonadIo :m => Oval -> :m Vector2))
+  (define (oval-pos oval)
+    (wrap-io
+      (ints->v
+       (lisp (List Integer) (oval)
+         (ltk:coords oval)))))
+
+  (declare configure-oval (MonadIo :m => Oval -> String -> String -> :m Unit))
+  (define (configure-oval shape property val)
+    (wrap-io
+      (lisp :a (shape property val)
+        (ltk:configure shape property val))
       Unit))
 
-  (define-type DrawShape
-    (Oval Oval))
+  (repr :native ltk:canvas-polygon)
+  (define-type Polygon)
 
-  (declare configure-shape (MonadIo :m => DrawShape -> Color -> :m Unit))
-  (define (configure-shape shape fill-color)
+  (declare make-polygon (MonadIo :m => Canvas -> List Vector2 -> :m Polygon))
+  (define (make-polygon canvas coords)
+    (let int-coords = (map v->ints coords))
+    (wrap-io
+      (lisp :a (canvas int-coords)
+        (ltk:create-polygon canvas int-coords))))
+
+  (declare polygon-coords (MonadIo :m => Polygon -> :m (List Vector2)))
+  (define (polygon-coords shape)
+    (wrap-io
+      (map ints->v
+           (lisp (List (List Integer)) (shape)
+             (ltk:coords shape)))))
+
+  (define-type DrawShape
+    (Oval Oval)
+    (Polygon Polygon))
+
+  (declare configure-shape (MonadIo :m => DrawShape -> String -> String -> :m Unit))
+  (define (configure-shape shape property val)
     (match shape
       ((Oval s)
-       (configure-oval s fill-color))))
+       (configure-oval s property val))
+      ((Polygon s)
+       (wrap-io
+         (lisp :a (s property val)
+           (ltk:configure s property val))
+         Unit))))
 
   (declare move-shape (MonadIo :m => DrawShape -> Integer -> Integer -> :m Unit))
   (define (move-shape shape dx dy)
@@ -133,15 +190,21 @@
        (wrap-io
          (lisp :a (s dx dy)
            (ltk:move s dx dy))
+         Unit))
+      ((Polygon s)
+       (wrap-io
+         (lisp :a (s dx dy)
+           (ltk:move s dx dy))
          Unit))))
 
-  (declare coords-shape (MonadIo :m => DrawShape -> Vector2 -> Vector2 -> :m Unit))
-  (define (coords-shape s pos size)
-    "Set coordinates of S."
-    (match s
+  (declare coords-shape ((MonadIo :m) (MonadIoTerm :m) => DrawShape -> Vector2 -> :m Unit))
+  (define (coords-shape s pos)
+    "Set coordinates of S. Sets the center of an oval to POS. Sets the first
+coord in polygons to POS."
+    (do-match s
       ((Oval s)
+       ((Vector2 w h) <- (oval-size s))
        (let (Vector2 x y) = pos)
-       (let (Vector2 w h) = size)
        (let x1 = (- x (/ w 2)))
        (let y1 = (- y (/ h 2)))
        (let x2 = (+ x (/ w 2)))
@@ -150,6 +213,17 @@
          (lisp :a (s x1 y1 x2 y2)
            (cl:setf (ltk:coords s) (cl:list (cl:list x1 y1)
                                             (cl:list x2 y2))))
+         Unit))
+      ((Polygon p)
+       (coords <- (polygon-coords p))
+       (let c1 = (opt:from-some "Polygon missing coords"
+                                (l:head coords)))
+       (let delt = (v- pos c1))
+       (let new-coords = (map (v+ delt) coords))
+       (let new-coords-ints = (map v->ints new-coords))
+       (wrap-io
+         (lisp :a (s new-coords-ints)
+           (cl:setf (ltk:coords s) new-coords-ints))
          Unit))))
   )
 
@@ -211,6 +285,7 @@
 
 (coalton-toplevel
   (declare move-all ((MonadIo :m)
+                     (MonadIoTerm :m)
                      (HasGet :w :m (Unique Canvas) Canvas)
                      (HasGetSet :w :m (MapStore Position) Position)
                      (ExplMembers :m (MapStore Position) Position)
@@ -221,12 +296,12 @@
   (define move-all
     "Move all (Position Velocity) components by their velocity. If they
 have a DrawShape component, also move the shape by the velocity to match."
-    (do-cflatmap (Tuple4 (Position p) (Velocity v) (Size sz) s?)
+    (do-cflatmap (Tuple3 (Position p) (Velocity v) s?)
       (let _ = (the (Optional DrawShape) s?))
       ;; We have to be careful to handle the rounding so the internal and
       ;; drawn positions don't get out of sync.
       (let new-pos = (v+ p v))
       (do-when-val (s s?)
-        (coords-shape s new-pos sz))
+        (coords-shape s new-pos))
       (pure (Position new-pos))))
   )
