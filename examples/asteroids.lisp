@@ -83,6 +83,21 @@
       DrawShape)))
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;             Constants             ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+  (define FPS 60.0)
+  (define frame-delay (to-ufix (round (/ 1000.0 FPS))))
+
+  (define width 700)
+  (define height 700)
+
+  (define bullet-lifetime (* 60 3))
+
+  (define player-rot-speed 0.07)
+  )
 
 (coalton-toplevel
 
@@ -113,8 +128,8 @@
   (declare accelerate-player (Vector2 -> System_ Unit))
   (define (accelerate-player acc)
     (cmap
-     (fn ((Tuple (Velocity v) (Player)))
-       (Velocity (v+ v acc)))))
+     (fn ((Tuple3 (Velocity v) (Angle a) (Player)))
+       (Velocity (v+ v (rotate-vector a acc))))))
 
   (declare rotate-player (Single-Float -> System_ Unit))
   (define (rotate-player x)
@@ -132,15 +147,15 @@
         (Velocity vel)
         (Size (Vector2 5.0 5.0))
         (Tuple
-         (TicksToLive 60)
+         (TicksToLive bullet-lifetime)
          Bullet))))
      (oval <- (draw-oval ety))
      (configure-oval oval "fill" "orange")))
 
   (declare shoot-bullet (System_ Unit))
   (define shoot-bullet
-    (do-cforeach (Tuple (Player) (Position p))
-      (spawn-bullet p (Vector2 0 1.5))))
+    (do-cforeach (Tuple3 (Player) (Position p) (Angle a))
+      (spawn-bullet p (rotate-vector a (Vector2 0 1.5)))))
 
   (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-asteroid pos vel)
@@ -201,14 +216,6 @@ the canvas if it has one."
 (named-readtables:in-readtable :standard)
 
 (coalton-toplevel
-
-  (define FPS 60.0)
-  (define frame-delay (to-ufix (round (/ 1000.0 FPS))))
-
-  (define width 700)
-  (define height 700)
-
-  (define player-rot-speed 0.07)
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               Main                ;;;

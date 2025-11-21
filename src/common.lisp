@@ -28,6 +28,7 @@
    #:v-y
    #:v+
    #:v-
+   #:rotate-vector
    #:rotate-vectors
    #:Position
    #:Velocity
@@ -90,6 +91,14 @@
   (declare v- (Vector2 -> Vector2 -> Vector2))
   (define (v- (Vector2 ax ay) (Vector2 bx by))
     (Vector2 (- ax bx) (- ay by)))
+
+  (declare rotate-vector (Single-Float -> Vector2 -> Vector2))
+  (define (rotate-vector theta (Vector2 x y))
+    (let ((c (cos theta))
+          (s (sin theta)))
+      (Vector2
+       (- (* x c) (* y s))
+       (+ (* x s) (* y c)))))
 
   (declare rotate-vectors (Single-Float -> List Vector2 -> List Vector2))
   (define (rotate-vectors theta vs)
