@@ -245,10 +245,7 @@ coord in polygons to POS."
                                             (cl:list x2 y2))))
          Unit))
       ((Polygon p coords)
-       (let c1 = (opt:from-some "Polygon missing coords"
-                                (l:head coords)))
-       (let delt = (v- pos c1))
-       (let new-coords = (map (v+ delt) coords))
+       (let new-coords = (map (v+ pos) coords))
        (let new-coords-ints = (map v->ints new-coords))
        (wrap-io
          (lisp :a (p new-coords-ints)

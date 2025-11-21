@@ -67,6 +67,9 @@
       (Unique Canvas)
       (MapStore DrawShape)))
 
+  ;; Type alias for all of the components a game
+  ;; object might have. Used when trying to delete
+  ;; a game object's components entirely.
   (define-type-alias AllComponents
     (Tuple4
      Position
@@ -96,14 +99,20 @@
       (new-entity
        (Tuple3
         (Position pos)
-        (Velocity (Vector2 1.0 0.0))
+        (Velocity (Vector2 0.0 0.0))
         Player)))
-     (let p1 = (v- pos (Vector2 6.0 13.0)))
-     (let p2 = (v+ pos (Vector2 0.0 13.0)))
-     (let p3 = (v- pos (Vector2 -6.0 13.0)))
+     (let p1 = (Vector2 6.0 -13.0))
+     (let p2 = (Vector2 0.0 13.0))
+     (let p3 = (Vector2 -6.0 -13.0))
      (poly <- (draw-polygon ety (make-list p1 p2 p3)))
      (configure-polygon poly "fill" "blue")
      (pure Unit)))
+
+  (declare accelerate-player (Vector2 -> System_ Unit))
+  (define (accelerate-player acc)
+    (cmap
+     (fn ((Tuple (Velocity v) (Player)))
+       (Velocity (v+ v acc)))))
 
   (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-bullet pos vel)
@@ -184,8 +193,8 @@ the canvas if it has one."
   (define FPS 60.0)
   (define frame-delay (to-ufix (round (/ 1000.0 FPS))))
 
-  (define width 500)
-  (define height 500)
+  (define width 700)
+  (define height 700)
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               Main                ;;;
@@ -210,8 +219,9 @@ the canvas if it has one."
         (wrap-io
           (lisp :a (canvas)
             (ltk:focus canvas)))
-        (bind canvas "<space>" shoot-bullet)
-        ;; (bind canvas "<KeyPress-space>" shoot-bullet)
+        (bind canvas "<KeyPress-Up>" (accelerate-player (Vector2 0.0 0.1)))
+        (bind canvas "<KeyPress-Down>" (accelerate-player (Vector2 0.0 -0.1)))
+        (bind canvas "<KeyPress-space>" shoot-bullet)
         (spawn-player (Vector2 300.0 300.0))
         (spawn-asteroid (Vector2 0.0 0.0) (Vector2 0.5 -0.75))
         (main-loop)
