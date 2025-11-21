@@ -107,6 +107,11 @@
   (define (entity-id (Entity% id))
     id)
 
+  (define-instance (Into Entity String)
+    (inline)
+    (define (into ent)
+      (into (entity-id ent))))
+
   (define-instance (Ord Entity)
     (inline)
     (define (<=> e1 e2)

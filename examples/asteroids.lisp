@@ -153,30 +153,32 @@
       (write-line y)))
   )
 
+(named-readtables:in-readtable :standard)
+
 (coalton-toplevel
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               Main                ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+  (declare main-loop (Unit -> System_ Unit))
+  (define (main-loop)
+    (do
+     (write-line "HI")
+     move-all
+     (after 10 (main-loop))))
+
   (declare main (IO Unit))
   (define main
     (do-with-tk
      (w <- init-world)
-     (write-line "HI")
      (run-with w
        (do
         (init-canvas 500 500 "white")
         initialize
-        (write-line "HI 2")
         (do-cforeach-ety (ety (Tuple (Position _) (Size _)))
           (draw-oval ety))
-        (write-line "HI 3")
-        (do-loop-times (_ 5)
-          move-all
-          (write-line "hi")
-          )
-          ;; (sleep 10))
+        (after 10 (main-loop))
         ))))
 
   (declare run-main (Unit -> Unit))

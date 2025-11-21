@@ -7,6 +7,7 @@
    #:coalton-library/monad/environment
    #:coalton-library/experimental/do-control-core
    #:io/monad-io
+   #:io/unlift
    #:io/term
    #:io/simple-io
    #:ecs
@@ -20,6 +21,7 @@
   (:export
    #:with-tk
    #:do-with-tk
+   #:after
    #:Color
 
    #:grid
@@ -59,6 +61,21 @@
         (ltk:with-ltk ()
           (call-coalton-function f)))
       Unit))
+
+  (declare after_ (UFix -> IO :a -> IO Unit))
+  (define (after_ ms m-op)
+    (let f = (fn ()
+               (run! m-op)))
+    (wrap-io
+      (lisp :a (ms f)
+        (ltk:after ms f))
+      Unit))
+
+  (declare after (MonadUnliftIO :m => UFix -> :m :a -> :m Unit))
+  (define (after ms m-op)
+    (with-run-in-io
+        (fn (run)
+          (after_ ms (run m-op)))))
 
   (define-type-alias Color String)
 
@@ -113,7 +130,8 @@
       ((Oval s)
        (wrap-io
          (lisp :a (s dx dy)
-           (ltk:move s dx dy))))))
+           (ltk:move s dx dy))
+         Unit))))
   )
 
 (cl:defmacro do-with-tk (cl:&body body)
@@ -156,7 +174,7 @@
        (grid canvas 0 0)
        (set global-ent canvas))))
 
-  (declare draw-oval-with ((MonadIo :m)
+  (declare draw-oval-with ((MonadIo :m) (MonadIoTerm :m)
                            (HasGet :w :m (Unique Canvas) Canvas)
                            (HasSet :w :m (MapStore DrawShape) DrawShape)
                            => Entity -> Vector2 -> Vector2 -> SystemT :w :m Unit))
@@ -172,7 +190,7 @@
      (o <- (make-oval canvas (round x1) (round y1) (round x2) (round y2)))
      (set ety (Oval o))))
 
-  (declare draw-oval ((MonadIo :m)
+  (declare draw-oval ((MonadIo :m) (MonadIoTerm :m)
                       (HasGet :w :m (Unique Canvas) Canvas)
                       (HasGet :w :m (MapStore Position) Position)
                       (HasGet :w :m (MapStore Size) Size)
