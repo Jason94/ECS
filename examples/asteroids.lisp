@@ -165,8 +165,8 @@
        (do
         (init-canvas (to-ufix width) (to-ufix height) "white")
         (spawn-player (Vector2 300.0 300.0))
-        (spawn-asteroid (Vector2 100.0 100.0) (Vector2 0.5 -0.75))
-        (spawn-bullet (Vector2 150.0 200.0) (Vector2 1.0 1.0))
+        ;; (spawn-asteroid (Vector2 100.0 100.0) (Vector2 0.5 -0.75))
+        ;; (spawn-bullet (Vector2 150.0 200.0) (Vector2 1.0 1.0))
         (main-loop)
         ))))
 

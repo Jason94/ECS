@@ -140,8 +140,10 @@
      (pure (Vector2 (to-float (- (- x2 x1) 2))
                     (to-float (- (- y2 y1) 2))))))
 
+  ;; TODO: this doesn't actually work! ltk:coords is unimplemented
   (declare oval-pos (MonadIo :m => Oval -> :m Vector2))
   (define (oval-pos oval)
+    (error "Need to replace oval-pos implementation")
     (wrap-io
       (ints->v
        (lisp (List Integer) (oval)
@@ -169,6 +171,7 @@
     (wrap-io
       (map ints->v
            (lisp (List (List Integer)) (shape)
+             (cl:format cl:t "coords: ~a~%" (ltk:coords shape))
              (ltk:coords shape)))))
 
   (declare configure-polygon (MonadIo :m => Polygon -> String -> String -> :m Unit))
