@@ -60,6 +60,7 @@
       (MapStore Position)
       (MapStore Velocity)
       (MapStore Size)
+      (MapStore Angle)
       (MapStore Asteroid)
       (MapStore Bullet)
       (Unique Player)
@@ -97,9 +98,10 @@
     (do
      (ety <-
       (new-entity
-       (Tuple3
+       (Tuple4
         (Position pos)
         (Velocity (Vector2 0.0 0.0))
+        (Angle 0.45)
         Player)))
      (let p1 = (Vector2 6.0 -13.0))
      (let p2 = (Vector2 0.0 13.0))
@@ -113,6 +115,12 @@
     (cmap
      (fn ((Tuple (Velocity v) (Player)))
        (Velocity (v+ v acc)))))
+
+  (declare rotate-player (Single-Float -> System_ Unit))
+  (define (rotate-player x)
+    (cmap
+     (fn ((Tuple (Angle a) (Player)))
+       (Angle (+ a x)))))
 
   (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-bullet pos vel)
@@ -149,7 +157,7 @@
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
-    (do-cflatmap (Tuple (Position v) s?)
+    (do-cflatmap (Tuple3 (Position v) s? ang?)
       (let _ = (the (Optional DrawShape) s?))
       (let (Vector2 x y) = v)
       (let new-x =
@@ -165,7 +173,11 @@
       (let new-pos = (Vector2 new-x new-y))
       (do-when-val (s s?)
         (do-when (/= v new-pos)
-          (coords-shape s new-pos)))
+          (let ang =
+            (match ang?
+              ((Some a) (get-angle a))
+              ((None) 0.0)))
+          (coords-shape s new-pos ang)))
       (pure (Position new-pos))))
 
   (declare remove-entity (Entity -> System_ Unit))
@@ -196,6 +208,8 @@ the canvas if it has one."
   (define width 700)
   (define height 700)
 
+  (define player-rot-speed 0.07)
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               Main                ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -219,11 +233,13 @@ the canvas if it has one."
         (wrap-io
           (lisp :a (canvas)
             (ltk:focus canvas)))
+        (bind canvas "<KeyPress-Right>" (rotate-player player-rot-speed))
+        (bind canvas "<KeyPress-Left>" (rotate-player (* -1 player-rot-speed)))
         (bind canvas "<KeyPress-Up>" (accelerate-player (Vector2 0.0 0.1)))
         (bind canvas "<KeyPress-Down>" (accelerate-player (Vector2 0.0 -0.1)))
         (bind canvas "<KeyPress-space>" shoot-bullet)
         (spawn-player (Vector2 300.0 300.0))
-        (spawn-asteroid (Vector2 0.0 0.0) (Vector2 0.5 -0.75))
+        ;; (spawn-asteroid (Vector2 0.0 0.0) (Vector2 0.5 -0.75))
         (main-loop)
         ))))
 

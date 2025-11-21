@@ -881,6 +881,10 @@
 
 (coalton-toplevel
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;        Optional Components        ;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
   (define-type (OptionalStore :s)
     "Composite store used to produce values of type (Optional :a).
 Will always return True for expl-exists?. Writing can both set and
@@ -919,7 +923,6 @@ delete a component using Some and None, respectively."
          (expl-remove s ety-id c-prx))
         ((Some c)
          (expl-set s ety-id c)))))
-
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

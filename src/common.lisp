@@ -16,6 +16,9 @@
    (:opt #:coalton-library/optional))
   (:import-from #:coalton-library/math/real
    #:round)
+  (:import-from #:coalton-library/math/elementary
+   #:sin
+   #:cos)
   (:export
    #:Vector2
    #:v->list
@@ -25,9 +28,12 @@
    #:v-y
    #:v+
    #:v-
+   #:rotate-vectors
    #:Position
    #:Velocity
-   #:Size)
+   #:Size
+   #:Angle
+   #:get-angle)
   )
 
 (in-package :ecs/common-components)
@@ -85,6 +91,17 @@
   (define (v- (Vector2 ax ay) (Vector2 bx by))
     (Vector2 (- ax bx) (- ay by)))
 
+  (declare rotate-vectors (Single-Float -> List Vector2 -> List Vector2))
+  (define (rotate-vectors theta vs)
+    (let ((c (cos theta))
+          (s (sin theta)))
+      (map
+       (fn ((Vector2 x y))
+         (Vector2
+          (- (* x c) (* y s))
+          (+ (* x s) (* y c))))
+       vs)))
+
   (define-instance (Into Vector2 String)
     (inline)
     (define (into (Vector2 x y))
@@ -109,8 +126,20 @@
   (define-type Size
     (Size Vector2))
 
+  (derive Eq)
+  (repr :transparent)
+  (define-type Angle
+    "Angle in radians"
+    (Angle Single-Float))
+
+  (inline)
+  (declare get-angle (Angle -> Single-Float))
+  (define (get-angle (Angle a))
+    a)
+
   (define-instance (Component (MapStore Position) Position))
   (define-instance (Component (MapStore Velocity) Velocity))
   (define-instance (Component (MapStore Size) Size))
+  (define-instance (Component (MapStore Angle) Angle))
 
   )

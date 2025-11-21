@@ -228,8 +228,9 @@
            (ltk:move s dx dy))
          Unit))))
 
-  (declare coords-shape ((MonadIo :m) (MonadIoTerm :m) => DrawShape -> Vector2 -> :m Unit))
-  (define (coords-shape s pos)
+  (declare coords-shape ((MonadIo :m) (MonadIoTerm :m)
+                         => DrawShape -> Vector2 -> Single-Float -> :m Unit))
+  (define (coords-shape s pos ang)
     "Set coordinates of S. Sets the center of an oval to POS. Sets the first
 coord in polygons to POS."
     (do-match s
@@ -245,8 +246,11 @@ coord in polygons to POS."
                                             (cl:list x2 y2))))
          Unit))
       ((Polygon p coords)
-       (let new-coords = (map (v+ pos) coords))
+       (let _ = (traceobject "coords" coords))
+       (let new-coords = (map (v+ pos)
+                              (rotate-vectors ang coords)))
        (let new-coords-ints = (map v->ints new-coords))
+       (let _ = (traceobject "new-coords" new-coords))
        (wrap-io
          (lisp :a (p new-coords-ints)
            (cl:setf (ltk:coords p) new-coords-ints))
@@ -344,18 +348,23 @@ coord in polygons to POS."
                      (HasGetSet :w :m (MapStore Position) Position)
                      (ExplMembers :m (MapStore Position) Position)
                      (HasGetMembers :w :m (MapStore Velocity) Velocity)
+                     (HasGet :w :m (MapStore Angle) Angle)
                      (HasGetMembers :w :m (MapStore DrawShape) DrawShape)
                      (HasGetMembers :w :m (MapStore Size) Size)
                      => SystemT :w :m Unit))
   (define move-all
     "Move all (Position Velocity) components by their velocity. If they
 have a DrawShape component, also move the shape by the velocity to match."
-    (do-cflatmap (Tuple3 (Position p) (Velocity v) s?)
+    (do-cflatmap (Tuple4 (Position p) (Velocity v) s? ang?)
       (let _ = (the (Optional DrawShape) s?))
       ;; We have to be careful to handle the rounding so the internal and
       ;; drawn positions don't get out of sync.
       (let new-pos = (v+ p v))
       (do-when-val (s s?)
-        (coords-shape s new-pos))
+        (let ang =
+          (match ang?
+            ((Some a) (get-angle a))
+            ((None) 0.0)))
+        (coords-shape s new-pos ang))
       (pure (Position new-pos))))
   )
