@@ -211,6 +211,17 @@
      (s <- (get-store))
      (lift (expl-exists? s id comp-prx))))
 
+  (declare get? (HasGet :w :m :s :c => Entity -> SystemT :w :m (Optional :c)))
+  (define (get? ety)
+    (let c-prx = t:Proxy)
+    (do
+     (has-c? <- (exists?_ ety c-prx))
+     (if has-c?
+         (do
+          (c <- (get ety))
+          (pure (Some (t:as-proxy-of c c-prx))))
+         (pure None))))
+
   (declare members_ ((Has :w :m :s :c) (ExplMembers :m :s :c)
                      => t:Proxy :c -> SystemT :w :m (List Entity)))
   (define (members_ comp-prx)
@@ -613,6 +624,7 @@
 
   (define-instance ((ExplSet :m :s1 :c1) (ExplSet :m :s2 :c2)
                     => ExplSet :m (Tuple :s1 :s2) (Tuple :c1 :c2))
+    (inline)
     (define (expl-set (Tuple s1 s2) ety-id (Tuple c1 c2))
       (liftA2 (fn (_ _) Unit)
               (expl-set s1 ety-id c1)
@@ -633,6 +645,16 @@
                        (expl-exists? s2 (entity-id ent) prx-c2))
                      members1))
        (pure members2))))
+
+  (define-instance ((ExplDestroy :m :s1 :c1) (ExplDestroy :m :s2 :c2)
+                    => ExplDestroy :m (Tuple :s1 :s2) (Tuple :c1 :c2))
+    (inline)
+    (define (expl-remove (Tuple s1 s2) enty-id c1c2-prox)
+      (let prx1 = (as-proxy-of-tup1 c1c2-prox))
+      (let prx2 = (as-proxy-of-tup2 c1c2-prox))
+      (do
+       (expl-remove s1 enty-id prx1)
+       (expl-remove s2 enty-id prx2))))
 
   (define-instance ((Has :m :w :s1 :c1) (Has :m :w :s2 :c2)
                     => Has :m :w (Tuple :s1 :s2) (Tuple :c1 :c2))
@@ -709,6 +731,19 @@
                                 prx-c3))
                              members2))
        (pure members3))))
+
+  (define-instance ((ExplDestroy :m :s1 :c1) (ExplDestroy :m :s2 :c2)
+                    (ExplDestroy :m :s3 :c3)
+                    => ExplDestroy :m (Tuple3 :s1 :s2 :s3) (Tuple3 :c1 :c2 :c3))
+    (inline)
+    (define (expl-remove (Tuple3 s1 s2 s3) enty-id tup-prox)
+      (let prx1 = (as-proxy-of-tup31 tup-prox))
+      (let prx2 = (as-proxy-of-tup32 tup-prox))
+      (let prx3 = (as-proxy-of-tup33 tup-prox))
+      (do
+       (expl-remove s1 enty-id prx1)
+       (expl-remove s2 enty-id prx2)
+       (expl-remove s3 enty-id prx3))))
 
   (define-instance ((Has :m :w :s1 :c1)
                     (Has :m :w :s2 :c2)
@@ -806,6 +841,21 @@
                                 prx-c4))
                              members3))
        (pure members4))))
+
+  (define-instance ((ExplDestroy :m :s1 :c1) (ExplDestroy :m :s2 :c2)
+                    (ExplDestroy :m :s3 :c3) (ExplDestroy :m :s4 :c4)
+                    => ExplDestroy :m (Tuple4 :s1 :s2 :s3 :s4) (Tuple4 :c1 :c2 :c3 :c4))
+    (inline)
+    (define (expl-remove (Tuple4 s1 s2 s3 s4) enty-id tup-prox)
+      (let prx1 = (as-proxy-of-tup41 tup-prox))
+      (let prx2 = (as-proxy-of-tup42 tup-prox))
+      (let prx3 = (as-proxy-of-tup43 tup-prox))
+      (let prx4 = (as-proxy-of-tup44 tup-prox))
+      (do
+       (expl-remove s1 enty-id prx1)
+       (expl-remove s2 enty-id prx2)
+       (expl-remove s3 enty-id prx3)
+       (expl-remove s4 enty-id prx4))))
 
   (define-instance ((Has :m :w :s1 :c1)
                     (Has :m :w :s2 :c2)

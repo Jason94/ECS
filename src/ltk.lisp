@@ -31,6 +31,8 @@
    #:Canvas
    #:make-canvas
 
+   #:bind
+
    #:Oval
    #:make-oval
    #:oval-bbox
@@ -47,6 +49,7 @@
    #:move-shape
    #:coords-shape
    #:configure-shape
+   #:delete-shape
 
    #:DrawShape
 
@@ -97,6 +100,23 @@
 
   (repr :native ltk:canvas)
   (define-type Canvas)
+
+  (declare bind_ (Canvas -> String -> IO :a -> IO Unit))
+  (define (bind_ canvas event m-op)
+    (let f = (fn ()
+               (run! m-op)))
+    (wrap-io
+      (lisp :a (canvas event f)
+        (ltk:bind canvas event (cl:lambda (e)
+                                 (cl:declare (cl:ignore e))
+                                 (call-coalton-function f))))
+      Unit))
+
+  (declare bind (MonadUnliftIo :m => Canvas -> String -> :m :a -> :m Unit))
+  (define (bind canvas event m-op)
+    (with-run-in-io
+        (fn (run)
+          (bind_ canvas event (run m-op)))))
 
   (declare make-canvas (MonadIo :m => UFix -> UFix -> Color -> :m Canvas))
   (define (make-canvas width height color)
@@ -234,6 +254,20 @@ coord in polygons to POS."
          (lisp :a (p new-coords-ints)
            (cl:setf (ltk:coords p) new-coords-ints))
          Unit))))
+
+  (declare delete-shape (MonadIo :m => Canvas -> DrawShape -> :m Unit))
+  (define (delete-shape canvas shape)
+    (match shape
+      ((Oval s _)
+       (wrap-io
+         (lisp :a (canvas s)
+           (ltk:itemdelete canvas s))
+         Unit))
+      ((Polygon s _)
+       (wrap-io
+         (lisp :a (canvas s)
+           (ltk:itemdelete canvas s))
+         Unit))))
   )
 
 (cl:defmacro do-with-tk (cl:&body body)
@@ -254,14 +288,16 @@ coord in polygons to POS."
                         (Has :w :m (Unique Canvas) Canvas)
                         (ExplGet :m (Unique Canvas) Canvas)
                         (ExplSet :m (Unique Canvas) Canvas)
-                        => UFix -> UFix -> Color -> SystemT :w :m Unit))
+                        => UFix -> UFix -> Color -> SystemT :w :m Canvas))
   (define (init-canvas width height background-color)
     (do
      (has-canvas? <- (exists? global-ent Canvas))
-     (do-when (not has-canvas?)
+     (do-if has-canvas?
+         (get global-ent)
        (canvas <- (make-canvas width height background-color))
        (grid canvas 0 0)
-       (set global-ent canvas))))
+       (set global-ent canvas)
+       (pure canvas))))
 
   (declare draw-oval-with ((MonadIo :m) (MonadIoTerm :m)
                            (HasGet :w :m (Unique Canvas) Canvas)

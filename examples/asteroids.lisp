@@ -44,6 +44,12 @@
 
   (define-instance (Component (Unique Player) Player))
 
+  (derive Eq)
+  (define-type TicksToLive
+    (TicksToLive Integer))
+
+  (define-instance (Component (MapStore TicksToLive) TicksToLive))
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               World               ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,8 +63,20 @@
       (MapStore Asteroid)
       (MapStore Bullet)
       (Unique Player)
+      (MapStore TicksToLive)
       (Unique Canvas)
       (MapStore DrawShape)))
+
+  (define-type-alias AllComponents
+    (Tuple4
+     Position
+     Velocity
+     Size
+     (Tuple4
+      Asteroid
+      Bullet
+      TicksToLive
+      DrawShape)))
   )
 
 
@@ -96,9 +114,16 @@
         (Position pos)
         (Velocity vel)
         (Size (Vector2 5.0 5.0))
-        Bullet)))
+        (Tuple
+         (TicksToLive 60)
+         Bullet))))
      (oval <- (draw-oval ety))
      (configure-oval oval "fill" "orange")))
+
+  (declare shoot-bullet (System_ Unit))
+  (define shoot-bullet
+    (do-cforeach (Tuple (Player) (Position p))
+      (spawn-bullet p (Vector2 0 1.5))))
 
   (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-asteroid pos vel)
@@ -134,6 +159,22 @@
           (coords-shape s new-pos)))
       (pure (Position new-pos))))
 
+  (declare remove-entity (Entity -> System_ Unit))
+  (define (remove-entity ety)
+    "Fully remove ETY from the system. Delet its shape from
+the canvas if it has one."
+    (do
+     (do-when-valM (shape (get? ety))
+       (canvas <- (get global-ent))
+       (delete-shape canvas shape))
+     (remove ety AllComponents)))
+
+  (declare countdown (System_ Unit))
+  (define countdown
+    (do-cforeach-ety (ety (TicksToLive rem))
+      (do-if (> rem 0)
+          (set ety (TicksToLive (- rem 1)))
+        (remove-entity ety))))
   )
 
 (named-readtables:in-readtable :standard)
@@ -153,6 +194,7 @@
   (declare main-loop (Unit -> System_ Unit))
   (define (main-loop)
     (do
+     countdown
      move-all
      (wrap width height)
      (after frame-delay (main-loop))))
@@ -163,10 +205,15 @@
      (w <- init-world)
      (run-with w
        (do
-        (init-canvas (to-ufix width) (to-ufix height) "white")
-        ;; (spawn-player (Vector2 300.0 300.0))
+        (canvas <- (init-canvas (to-ufix width) (to-ufix height) "white"))
+        ;; TODO: wrap ltk:focus in the library
+        (wrap-io
+          (lisp :a (canvas)
+            (ltk:focus canvas)))
+        (bind canvas "<space>" shoot-bullet)
+        ;; (bind canvas "<KeyPress-space>" shoot-bullet)
+        (spawn-player (Vector2 300.0 300.0))
         (spawn-asteroid (Vector2 0.0 0.0) (Vector2 0.5 -0.75))
-        ;; (spawn-bullet (Vector2 150.0 200.0) (Vector2 1.0 1.0))
         (main-loop)
         ))))
 
