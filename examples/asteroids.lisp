@@ -38,6 +38,12 @@
 
   (define-instance (Component (MapStore Bullet) Bullet))
 
+  (derive Eq)
+  (define-type Player
+    Player)
+
+  (define-instance (Component (Unique Player) Player))
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               World               ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50,6 +56,7 @@
       (MapStore Size)
       (MapStore Asteroid)
       (MapStore Bullet)
+      (Unique Player)
       (Unique Canvas)
       (MapStore DrawShape)))
   )
@@ -63,6 +70,22 @@
 
   (define-type-alias (System_ :a)
     (System World :a))
+
+  (declare spawn-player (Vector2 -> System_ Unit))
+  (define (spawn-player pos)
+    (do
+     (ety <-
+      (new-entity
+       (Tuple3
+        (Position pos)
+        (Velocity (Vector2 0.0 0.0))
+        Player)))
+     (let p1 = (v- pos (Vector2 6.0 13.0)))
+     (let p2 = (v+ pos (Vector2 0.0 13.0)))
+     (let p3 = (v- pos (Vector2 -6.0 13.0)))
+     (poly <- (draw-polygon ety (make-list p1 p2 p3)))
+     (configure-polygon poly "fill" "blue")
+     (pure Unit)))
 
   (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-bullet pos vel)
@@ -141,6 +164,7 @@
      (run-with w
        (do
         (init-canvas (to-ufix width) (to-ufix height) "white")
+        (spawn-player (Vector2 300.0 300.0))
         (spawn-asteroid (Vector2 100.0 100.0) (Vector2 0.5 -0.75))
         (spawn-bullet (Vector2 150.0 200.0) (Vector2 1.0 1.0))
         (main-loop)

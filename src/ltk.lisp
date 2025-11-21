@@ -42,15 +42,18 @@
    #:Polygon
    #:make-polygon
    #:polygon-coords
+   #:configure-polygon
 
    #:move-shape
    #:coords-shape
+   #:configure-shape
 
    #:DrawShape
 
    #:init-canvas
    #:draw-oval-with
    #:draw-oval
+   #:draw-polygon
    #:move-all
    )
   )
@@ -159,7 +162,7 @@
     (let int-coords = (map v->ints coords))
     (wrap-io
       (lisp :a (canvas int-coords)
-        (ltk:create-polygon canvas int-coords))))
+        (ltk:make-polygon canvas int-coords))))
 
   (declare polygon-coords (MonadIo :m => Polygon -> :m (List Vector2)))
   (define (polygon-coords shape)
@@ -167,6 +170,13 @@
       (map ints->v
            (lisp (List (List Integer)) (shape)
              (ltk:coords shape)))))
+
+  (declare configure-polygon (MonadIo :m => Polygon -> String -> String -> :m Unit))
+  (define (configure-polygon s property val)
+    (wrap-io
+      (lisp :a (s property val)
+        (ltk:configure s property val))
+      Unit))
 
   (define-type DrawShape
     (Oval Oval)
@@ -178,10 +188,7 @@
       ((Oval s)
        (configure-oval s property val))
       ((Polygon s)
-       (wrap-io
-         (lisp :a (s property val)
-           (ltk:configure s property val))
-         Unit))))
+       (configure-polygon s property val))))
 
   (declare move-shape (MonadIo :m => DrawShape -> Integer -> Integer -> :m Unit))
   (define (move-shape shape dx dy)
@@ -281,6 +288,18 @@ coord in polygons to POS."
     (do
      ((Tuple (Position p) (Size s)) <- (get ety))
      (draw-oval-with ety p s)))
+
+  (declare draw-polygon ((MonadIo :m)
+                         (HasGet :w :m (Unique Canvas) Canvas)
+                         (HasSet :w :m (MapStore DrawShape) DrawShape)
+                         => Entity -> List Vector2 -> SystemT :w :m Polygon))
+  (define (draw-polygon ety pts)
+    (do
+     (canvas <- (get global-ent))
+     (p <- (make-polygon canvas pts))
+     (set ety (Polygon p))
+     (pure p)))
+
   )
 
 (coalton-toplevel
