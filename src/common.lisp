@@ -17,6 +17,7 @@
   (:import-from #:coalton-library/math/real
    #:round)
   (:import-from #:coalton-library/math/elementary
+   #:sqrt
    #:sin
    #:cos)
   (:export
@@ -30,6 +31,8 @@
    #:v-
    #:rotate-vector
    #:rotate-vectors
+   #:v-magnitude
+   #:v-distance
    #:Position
    #:Velocity
    #:Size
@@ -110,6 +113,16 @@
           (- (* x c) (* y s))
           (+ (* x s) (* y c))))
        vs)))
+
+  (inline)
+  (declare v-magnitude (Vector2 -> Single-Float))
+  (define (v-magnitude (Vector2 x y))
+    (sqrt (+ (* x x) (* y y))))
+
+  (inline)
+  (declare v-distance (Vector2 -> Vector2 -> Single-Float))
+  (define (v-distance v1 v2)
+    (v-magnitude (v- v1 v2)))
 
   (define-instance (Into Vector2 String)
     (inline)
