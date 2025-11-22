@@ -41,7 +41,6 @@
 (named-readtables:in-readtable coalton:coalton)
 
 (coalton-toplevel
-
   (declare to-ufix (Integer -> UFix))
   (define (to-ufix x)
     (lisp UFix (x)

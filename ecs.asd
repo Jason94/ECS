@@ -14,6 +14,7 @@
                  (:file "core")
                  (:file "common")
                  ;; (:file "ltk")
+                 (:file "raylib-patch")
                  (:file "raylib")
                  )))
   )

@@ -350,8 +350,8 @@
   "Remove component of type COMP-TYPE from ETY."
   `(remove_ ,ety (the (t:Proxy ,comp-type) t:Proxy)))
 
-(cl:defmacro members (ety comp-type)
-  `(members_ ,ety (the (t:Proxy ,comp-type) t:Proxy)))
+(cl:defmacro members (comp-type)
+  `(members_ (the (t:Proxy ,comp-type) t:Proxy)))
 
 (cl:defmacro do-cforeach (comp-form cl:&body body)
   `(cforeach

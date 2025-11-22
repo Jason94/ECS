@@ -18,6 +18,7 @@
    #:ecs/raylib
    )
   (:local-nicknames
+   (:mut #:io/mut)
    )
   )
 
@@ -36,6 +37,8 @@
   (define height 700)
 
   (define asteroid-radius 10.0)
+  (define asteroid-bounding-circle
+    (Circle asteroid-radius))
 
   (define bullet-radius 3.0)
   (define bullet-lifetime 90)
@@ -43,23 +46,42 @@
 
   (define player-rot-speed 0.1)
   (define player-accel 0.12)
-  (define player-bounding-radius 7.0)
   (define player-max-speed 12.0)
-  (define player-ship-shape
+  (define player-bounding-triangle
     (Triangle
      (vec2 -6.0 -12.0)
      (vec2 0.0 12.0)
-     (vec2 6.0 -12.0)
-     (color :black)))
+     (vec2 6.0 -12.0)))
+  (define player-ship-shape
+    (DrawShape
+     player-bounding-triangle
+     (color :black)
+     Fill))
   (define player-flame-shape
-    (Triangle
-     (vec2 0.0 -20.0)
-     (vec2 -6.0 -12.0)
-     (vec2 6.0 -12.0)
-     (color :red)))
+    (DrawShape
+     (Triangle
+      (vec2 0.0 -20.0)
+      (vec2 -6.0 -12.0)
+      (vec2 6.0 -12.0))
+     (color :red)
+     Fill))
   )
 
 (coalton-toplevel
+
+  (derive Eq)
+  (repr :transparent)
+  (define-type GameOver
+    (GameOver Boolean))
+
+  (define-instance (SemiGroup GameOver)
+    (define (<> _ _)
+      (error "Don't call <> on GameOver")))
+
+  (define-instance (Monoid GameOver)
+    (define mempty (GameOver False)))
+
+  (define-instance (Component (Global GameOver) GameOver))
 
   (derive Eq)
   (define-type Asteroid
@@ -89,9 +111,9 @@
   ;;;               World               ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
   (define-world World
      ((Global EntityCounter)
+      (Global GameOver)
       (MapStore Position)
       (MapStore Velocity)
       (MapStore Angle)
@@ -131,13 +153,6 @@ bounding rectangle of dimensions SIZE."
     (min
      (/ (vy size) 2)
      (/ (vx size) 2)))
-
-  (declare collides? (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Boolean))
-  (define (collides? pos1 sz1 pos2 sz2)
-    "Check if an object at POS1 with bounding box SZ1 collides with
-an object at POS2 with bounding box SZ2."
-    (< (v-distance pos1 pos2)
-       (+ (radial-size sz1) (radial-size sz2))))
 
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
@@ -188,7 +203,7 @@ an object at POS2 with bounding box SZ2."
      (Tuple4
       (Position pos)
       (Velocity vel)
-      (Circle bullet-radius (color :orange))
+      (DrawShape (Circle bullet-radius) (color :orange) Fill)
       (Tuple
        (TicksToLive bullet-lifetime)
        Bullet))))
@@ -204,7 +219,7 @@ an object at POS2 with bounding box SZ2."
      (Tuple4
       (Position pos)
       (Velocity vel)
-      (Circle asteroid-radius (color :black))
+      (DrawShape asteroid-bounding-circle (color :black) Fill)
       Asteroid)))
 
   (declare spawn-random-asteroid (Integer -> Integer -> System_ Unit))
@@ -253,6 +268,14 @@ an object at POS2 with bounding box SZ2."
         (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
           (remove-entity ety1)
           (remove-entity ety2)))))
+
+  (declare check-game-over (System_ Unit))
+  (define check-game-over
+    (do
+     ((Tuple (Player) (Position p1)) <- (get global-ent))
+     (do-cforeach (Tuple (Asteroid) (Position p2))
+       (when_ (shapes-collide? p1 player-bounding-triangle p2 asteroid-bounding-circle)
+              (set global-ent (GameOver True))))))
   )
 
 (coalton-toplevel
@@ -293,19 +316,27 @@ an object at POS2 with bounding box SZ2."
      move-all
      (wrap width height)
      destroy-collissions
+     check-game-over
 
      ;;; Draw
      draw-all-shapes
      ))
+
+  (declare should-close (System_ Boolean))
+  (define should-close
+    (do
+     (signal-close? <- window-should-close)
+     ((GameOver over?) <- (get global-ent))
+     (pure (or signal-close? over?))))
 
   (declare main (IO Unit))
   (define main
     (do-with-window (WindowConfig (to-ufix width) (to-ufix height) "Asteroids" (to-ufix FPS))
      (w <- init-world)
      (do-run-with w
-       (spawn-player (vec2 400.0 400.0))
+       (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
        (spawn-asteroid (vec2 200.0 200.0) (vec2 0.0 0.0))
-       (do-loop-do-while window-should-close
+       (do-loop-do-while should-close
          (do-with-drawing
            (clear-background (color :raywhite))
            (draw-fps 20 20)
