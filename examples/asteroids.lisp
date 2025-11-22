@@ -124,16 +124,16 @@ an object at POS2 with bounding box SZ2."
 
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
-    (let p1 = (vec2 6.0 -13.0))
-    (let p2 = (vec2 0.0 13.0))
-    (let p3 = (vec2 -6.0 -13.0))
+    (let p1 = (vec2 -6.0 -12.0))
+    (let p2 = (vec2 0.0 12.0))
+    (let p3 = (vec2 6.0 -12.0))
     (new-entity_
      (Tuple4
       (Position pos)
       (Velocity (vec2 0.0 0.0))
-      (Angle 0.45)
+      (Angle 0.0)
       (Tuple
-       (Triangle p1 p2 p3 (color :blue))
+       (Triangle p1 p2 p3 (color :black))
        Player))))
 
   (declare accelerate-player (Vector2 -> System_ Unit))
@@ -215,40 +215,59 @@ an object at POS2 with bounding box SZ2."
           (remove-entity ety2)))))
   )
 
-(named-readtables:in-readtable :standard)
-
 (coalton-toplevel
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               Main                ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (declare main-loop (Unit -> System_ Unit))
-  (define (main-loop)
+  (declare move-all (System_ Unit))
+  (define move-all
+    "Move all (Position Velocity) components by their velocity."
+    (cmap (fn ((Tuple (Position p) (Velocity v)))
+      (Position (v+ p v)))))
+
+  (declare handle-input (System_ Unit))
+  (define handle-input
     (do
+     (do-whenM (is-key-pressed KeySpace)
+       shoot-bullet)
+     (do-whenM (is-key-down KeyUp)
+       (accelerate-player (vec2 0.0 0.1)))
+     (do-whenM (is-key-down KeyDown)
+       (accelerate-player (vec2 0.0 -0.1)))
+     (do-whenM (is-key-down KeyLeft)
+       (rotate-player (* -1 player-rot-speed)))
+     (do-whenM (is-key-down KeyRight)
+       (rotate-player player-rot-speed))
+     ))
+
+  (declare main-loop (System_ Unit))
+  (define main-loop
+    (do
+     ;;; Update
+     handle-input
      countdown
-     ;; move-all
+     move-all
      (wrap width height)
      destroy-collissions
-     draw-all-shapes))
-     ;; (after frame-delay (main-loop))))
+
+     ;;; Draw
+     draw-all-shapes
+     ))
 
   (declare main (IO Unit))
   (define main
     (do-with-window (WindowConfig (to-ufix width) (to-ufix height) "Asteroids" (to-ufix FPS))
      (w <- init-world)
      (do-run-with w
-       (spawn-player (vec2 300.0 300.0))
+       (spawn-player (vec2 400.0 400.0))
        (spawn-asteroid (vec2 200.0 200.0) (vec2 0.0 0.0))
        (do-loop-do-while window-should-close
          (do-with-drawing
            (clear-background (color :raywhite))
-           ;; (bind canvas "<KeyPress-Right>" (rotate-player player-rot-speed))
-           ;; (bind canvas "<KeyPress-Left>" (rotate-player (* -1 player-rot-speed)))
-           ;; (bind canvas "<KeyPress-Up>" (accelerate-player (Vector2 0.0 0.1)))
-           ;; (bind canvas "<KeyPress-Down>" (accelerate-player (Vector2 0.0 -0.1)))
-           ;; (bind canvas "<KeyPress-space>" shoot-bullet)
-           (main-loop)
+           (draw-fps 20 20)
+           main-loop
            )))))
 
   (declare run-main (Unit -> Unit))

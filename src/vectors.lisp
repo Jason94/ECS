@@ -81,8 +81,13 @@
       (v:vdistance v1 v2)))
 
   (define-instance (Eq Vector2)
+    (inline)
     (define (== v1 v2)
       (lisp Boolean (v1 v2)
         (v:v= v1 v2))))
+
+  (define-instance (Into Vector2 String)
+    (define (into vec)
+      (<> (<> (into (vx vec)) ",") (into (vy vec)))))
 
   )

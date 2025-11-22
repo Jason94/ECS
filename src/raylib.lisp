@@ -36,6 +36,15 @@
    #:do-with-window
    #:window-should-close
 
+   #:Key
+   #:KeyRight
+   #:KeyLeft
+   #:KeyUp
+   #:KeyDown
+   #:KeySpace
+   #:is-key-pressed
+   #:is-key-down
+
    #:with-drawing
    #:do-with-drawing
    #:clear-background
@@ -123,6 +132,52 @@
   `(with-window ,window-config
      (do
       ,@body)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;              Input                ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (repr :enum)
+  (define-type Key
+    KeyRight
+    KeyLeft
+    KeyUp
+    KeyDown
+    KeySpace)
+
+  (repr :native cl:symbol)
+  (define-type Key%)
+
+  (declare unwrap-key (Key -> Key%))
+  (define (unwrap-key key)
+    (lisp Key% (key)
+      (cl:ecase key
+        (Key/KeyRight :key-right)
+        (Key/KeyLeft :key-left)
+        (Key/KeyUp :key-up)
+        (Key/KeyDown :key-down)
+        (Key/KeySpace :key-space)
+        )))
+
+  (declare is-key-pressed (MonadIo :m => Key -> :m Boolean))
+  (define (is-key-pressed key)
+    "Check if a key has been pressed once."
+    (wrap-io
+      (let key_ = (unwrap-key key))
+      (lisp Boolean (key_)
+        (rl:is-key-pressed key_))))
+
+  (declare is-key-down (MonadIo :m => Key -> :m Boolean))
+  (define (is-key-down key)
+    "Check if a key is being pressed."
+    (wrap-io
+      (let key_ = (unwrap-key key))
+      (lisp Boolean (key_)
+        (rl:is-key-down key_))))
+
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     Drawing-related Functions     ;;;
@@ -262,24 +317,39 @@
   (define-type-alias DrawShapeStore (MapStore DrawShape))
   (define-instance (Component DrawShapeStore DrawShape))
 
-  (declare draw-shape (MonadIo :m => Vector2 -> DrawShape -> :m Unit))
-  (define (draw-shape pos s)
+  (declare draw-shape (MonadIo :m => Vector2 -> Optional Single-Float -> DrawShape -> :m Unit))
+  (define (draw-shape pos ang? s)
     (match s
       ((Circle r color)
        (draw-circle-v pos r color))
       ((CircleOutline r color)
        (draw-circle-lines-v pos r color))
       ((Triangle v1 v2 v3 color)
-       (draw-triangle-v pos v1 v2 v3 color))
+       (let ang =
+         (match ang?
+           ((Some a) a)
+           ((None) 0.0)))
+       (let v1_ = (v-rot ang v1))
+       (let v2_ = (v-rot ang v2))
+       (let v3_ = (v-rot ang v3))
+       (draw-triangle-v pos v1_ v2_ v3_ color))
       ((TriangleOutline v1 v2 v3 color)
-       (draw-triangle-lines-v pos v1 v2 v3 color))
+       (let ang =
+         (match ang?
+           ((Some a) a)
+           ((None) 0.0)))
+       (let v1_ = (v-rot ang v1))
+       (let v2_ = (v-rot ang v2))
+       (let v3_ = (v-rot ang v3))
+       (draw-triangle-lines-v pos v1_ v2_ v3_ color))
       ))
 
   (declare draw-all-shapes ((MonadIo :m)
                             (HasGetMembers :w :m DrawShapeStore DrawShape)
                             (HasGet :w :m (MapStore Position) Position)
+                            (HasGet :w :m (MapStore Angle) Angle)
                             => SystemT :w :m Unit))
   (define draw-all-shapes
-    (do-cforeach (Tuple s (Position p))
-      (draw-shape p s)))
+    (do-cforeach (Tuple3 s (Position p) ang?)
+      (draw-shape p (map get-angle ang?) s)))
   )

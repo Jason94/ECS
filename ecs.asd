@@ -5,7 +5,7 @@
   :maintainer "Jason Walker"
   :mailto "Jason0@pm.me"
   :license "MIT"
-  :depends-on ("coalton" "named-readtables" "coalton-io" "ltk" "cl-raylib" "3d-vectors")
+  :depends-on ("coalton" "named-readtables" "coalton-io" "cl-raylib" "3d-vectors")
   :components ((:module "src"
                 :serial t
                 :components
