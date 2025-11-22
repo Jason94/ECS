@@ -10,7 +10,7 @@
    #:io/monad-io
    #:io/term
    #:io/simple-io
-   #:io/thread
+   #:io/random
    #:ecs
    #:ecs/utils
    #:ecs/vectors
@@ -24,6 +24,38 @@
 (in-package :ecs-asteroids)
 
 (named-readtables:in-readtable coalton:coalton)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;             Constants             ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+  (define FPS 60)
+
+  (define width 700)
+  (define height 700)
+
+  (define bullet-radius 3.0)
+  (define bullet-lifetime 100)
+  (define bullet-speed 5.0)
+
+  (define player-rot-speed 0.07)
+  (define player-accel 0.12)
+  (define player-bounding-radius 7.0)
+  (define player-max-speed 12.0)
+  (define player-ship-shape
+    (Triangle
+     (vec2 -6.0 -12.0)
+     (vec2 0.0 12.0)
+     (vec2 6.0 -12.0)
+     (color :black)))
+  (define player-flame-shape
+    (Triangle
+     (vec2 0.0 -20.0)
+     (vec2 -6.0 -12.0)
+     (vec2 6.0 -12.0)
+     (color :red)))
+  )
 
 (coalton-toplevel
 
@@ -83,21 +115,6 @@
       DrawShape)))
   )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;             Constants             ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(coalton-toplevel
-  (define FPS 60)
-
-  (define width 700)
-  (define height 700)
-
-  (define bullet-lifetime (* 60 3))
-
-  (define player-rot-speed 0.07)
-  )
-
 (coalton-toplevel
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -124,23 +141,40 @@ an object at POS2 with bounding box SZ2."
 
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
-    (let p1 = (vec2 -6.0 -12.0))
-    (let p2 = (vec2 0.0 12.0))
-    (let p3 = (vec2 6.0 -12.0))
     (new-entity_
      (Tuple4
       (Position pos)
       (Velocity (vec2 0.0 0.0))
       (Angle 0.0)
       (Tuple
-       (Triangle p1 p2 p3 (color :black))
+       player-ship-shape
        Player))))
 
-  (declare accelerate-player (Vector2 -> System_ Unit))
+  (declare accelerate-player (Single-Float -> System_ Unit))
   (define (accelerate-player acc)
     (cmap
      (fn ((Tuple3 (Velocity v) (Angle a) (Player)))
-       (Velocity (v+ v (v-rot a acc))))))
+       (let new-vel = (v+ v (v-rot a (vec2 0.0 acc))))
+       (let new-speed = (v-length new-vel))
+       (let norm-vel =
+         (if (> new-speed player-max-speed)
+             (v* new-vel (/ player-max-speed new-speed))
+             new-vel))
+       (Velocity norm-vel))))
+
+  (declare show-player-flame (System_ Unit))
+  (define show-player-flame
+    (cmap
+     (fn ((Player))
+       (CompositeShape (make-list
+                        player-ship-shape
+                        player-flame-shape)))))
+
+  (declare hide-player-flame (System_ Unit))
+  (define hide-player-flame
+    (cmap
+     (fn ((Player))
+       player-ship-shape)))
 
   (declare rotate-player (Single-Float -> System_ Unit))
   (define (rotate-player x)
@@ -154,16 +188,16 @@ an object at POS2 with bounding box SZ2."
      (Tuple4
       (Position pos)
       (Velocity vel)
-      (Size (vec2 5.0 5.0))
+      (Size (vec2 bullet-radius bullet-radius))
       (Tuple3
-       (Circle 5.0 (color :orange))
+       (Circle bullet-radius (color :orange))
        (TicksToLive bullet-lifetime)
        Bullet))))
 
   (declare shoot-bullet (System_ Unit))
   (define shoot-bullet
     (do-cforeach (Tuple3 (Player) (Position p) (Angle a))
-      (spawn-bullet p (v-rot a (vec2 0 1.5)))))
+      (spawn-bullet p (v-rot a (vec2 0 bullet-speed)))))
 
   (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-asteroid pos vel)
@@ -175,6 +209,14 @@ an object at POS2 with bounding box SZ2."
       (Tuple
        (Circle 10.0 (color :black))
        Asteroid))))
+
+  (declare spawn-random-asteroid (Integer -> Integer -> System_ Unit))
+  (define (spawn-random-asteroid width height)
+    "Spawn an asteroid in a random location inside of WIDTH and HEIGHT."
+    (do
+     (x <- (random_ width))
+     (y <- (random_ height))
+     (spawn-asteroid (vec2 (to-float x) (to-float y)) (vec2 0 0))))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
@@ -232,10 +274,12 @@ an object at POS2 with bounding box SZ2."
     (do
      (do-whenM (is-key-pressed KeySpace)
        shoot-bullet)
+     (do-whenM (is-key-pressed KeyUp)
+       show-player-flame)
+     (do-whenM (is-key-released KeyUp)
+       hide-player-flame)
      (do-whenM (is-key-down KeyUp)
-       (accelerate-player (vec2 0.0 0.1)))
-     (do-whenM (is-key-down KeyDown)
-       (accelerate-player (vec2 0.0 -0.1)))
+       (accelerate-player player-accel))
      (do-whenM (is-key-down KeyLeft)
        (rotate-player (* -1 player-rot-speed)))
      (do-whenM (is-key-down KeyRight)

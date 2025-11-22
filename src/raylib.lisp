@@ -7,6 +7,7 @@
    #:coalton-library/classes
    #:coalton-library/monad/environment
    #:coalton-library/experimental/do-control-core
+   #:coalton-library/experimental/do-control-loops
    #:io/monad-io
    #:io/unlift
    #:io/term
@@ -44,6 +45,7 @@
    #:KeySpace
    #:is-key-pressed
    #:is-key-down
+   #:is-key-released
 
    #:with-drawing
    #:do-with-drawing
@@ -70,6 +72,7 @@
    #:CircleOutline
    #:Triangle
    #:TriangleOutline
+   #:CompositeShape
    #:draw-shape
    #:draw-all-shapes
    ))
@@ -177,6 +180,13 @@
       (lisp Boolean (key_)
         (rl:is-key-down key_))))
 
+  (declare is-key-released (MonadIo :m => Key -> :m Boolean))
+  (define (is-key-released key)
+    "Check if a key has been released once."
+    (wrap-io
+      (let key_ = (unwrap-key key))
+      (lisp Boolean (key_)
+        (rl:is-key-released key_))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -312,6 +322,7 @@
     (CircleOutline Single-Float Color)
     (Triangle Vector2 Vector2 Vector2 Color)
     (TriangleOutline Vector2 Vector2 Vector2 Color)
+    (CompositeShape (List DrawShape))
     )
 
   (define-type-alias DrawShapeStore (MapStore DrawShape))
@@ -342,6 +353,8 @@
        (let v2_ = (v-rot ang v2))
        (let v3_ = (v-rot ang v3))
        (draw-triangle-lines-v pos v1_ v2_ v3_ color))
+      ((CompositeShape shapes)
+       (foreach shapes (draw-shape pos ang?)))
       ))
 
   (declare draw-all-shapes ((MonadIo :m)

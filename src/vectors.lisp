@@ -15,6 +15,7 @@
    #:vy
    #:v+
    #:v-
+   #:v*
    #:v-rot
    #:v-length
    #:v-distance
@@ -60,6 +61,12 @@
   (define (v- a b)
     (lisp Vector2 (a b)
       (v:v- a b)))
+
+  (inline)
+  (declare v* (Vector2 -> Single-Float -> Vector2))
+  (define (v* vec c)
+    (lisp Vector2 (vec c)
+      (v:v* vec c)))
 
   (inline)
   (declare v-rot (Single-Float -> Vector2 -> Vector2))
