@@ -13,8 +13,9 @@
    #:io/thread
    #:ecs
    #:ecs/utils
+   #:ecs/vectors
    #:ecs/common-components
-   #:ecs/tk
+   #:ecs/raylib
    )
   (:local-nicknames
    )
@@ -65,7 +66,6 @@
       (MapStore Bullet)
       (Unique Player)
       (MapStore TicksToLive)
-      (Unique Canvas)
       (MapStore DrawShape)))
 
   ;; Type alias for all of the components a game
@@ -88,8 +88,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (coalton-toplevel
-  (define FPS 60.0)
-  (define frame-delay (to-ufix (round (/ 1000.0 FPS))))
+  (define FPS 60)
 
   (define width 700)
   (define height 700)
@@ -112,10 +111,9 @@
   (define (radial-size size)
     "Get the radius of the largest circle that fits inside a
 bounding rectangle of dimensions SIZE."
-    (let (Vector2 w h) = size)
     (min
-     (/ h 2)
-     (/ w 2)))
+     (/ (vy size) 2)
+     (/ (vx size) 2)))
 
   (declare collides? (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Boolean))
   (define (collides? pos1 sz1 pos2 sz2)
@@ -126,26 +124,23 @@ an object at POS2 with bounding box SZ2."
 
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
-    (do
-     (ety <-
-      (new-entity
-       (Tuple4
-        (Position pos)
-        (Velocity (Vector2 0.0 0.0))
-        (Angle 0.45)
-        Player)))
-     (let p1 = (Vector2 6.0 -13.0))
-     (let p2 = (Vector2 0.0 13.0))
-     (let p3 = (Vector2 -6.0 -13.0))
-     (poly <- (draw-polygon ety (make-list p1 p2 p3)))
-     (configure-polygon poly "fill" "blue")
-     (pure Unit)))
+    (let p1 = (vec2 6.0 -13.0))
+    (let p2 = (vec2 0.0 13.0))
+    (let p3 = (vec2 -6.0 -13.0))
+    (new-entity_
+     (Tuple4
+      (Position pos)
+      (Velocity (vec2 0.0 0.0))
+      (Angle 0.45)
+      (Tuple
+       (Triangle p1 p2 p3 (color :blue))
+       Player))))
 
   (declare accelerate-player (Vector2 -> System_ Unit))
   (define (accelerate-player acc)
     (cmap
      (fn ((Tuple3 (Velocity v) (Angle a) (Player)))
-       (Velocity (v+ v (rotate-vector a acc))))))
+       (Velocity (v+ v (v-rot a acc))))))
 
   (declare rotate-player (Single-Float -> System_ Unit))
   (define (rotate-player x)
@@ -155,42 +150,37 @@ an object at POS2 with bounding box SZ2."
 
   (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-bullet pos vel)
-    (do
-     (ety <-
-      (new-entity
-       (Tuple4
-        (Position pos)
-        (Velocity vel)
-        (Size (Vector2 5.0 5.0))
-        (Tuple
-         (TicksToLive bullet-lifetime)
-         Bullet))))
-     (oval <- (draw-oval ety))
-     (configure-oval oval "fill" "orange")))
+    (new-entity_
+     (Tuple4
+      (Position pos)
+      (Velocity vel)
+      (Size (vec2 5.0 5.0))
+      (Tuple3
+       (Circle 5.0 (color :orange))
+       (TicksToLive bullet-lifetime)
+       Bullet))))
 
   (declare shoot-bullet (System_ Unit))
   (define shoot-bullet
     (do-cforeach (Tuple3 (Player) (Position p) (Angle a))
-      (spawn-bullet p (rotate-vector a (Vector2 0 1.5)))))
+      (spawn-bullet p (v-rot a (vec2 0 1.5)))))
 
   (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
   (define (spawn-asteroid pos vel)
-    (do
-     (ety <-
-      (new-entity
-       (Tuple4
-        (Position pos)
-        (Velocity vel)
-        (Size (Vector2 10.0 10.0))
-        Asteroid)))
-     (oval <- (draw-oval ety))
-     (configure-oval oval "fill" "black")))
+    (new-entity_
+     (Tuple4
+      (Position pos)
+      (Velocity vel)
+      (Size (vec2 10.0 10.0))
+      (Tuple
+       (Circle 10.0 (color :black))
+       Asteroid))))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
-    (do-cflatmap (Tuple3 (Position v) s? ang?)
-      (let _ = (the (Optional DrawShape) s?))
-      (let (Vector2 x y) = v)
+    (do-cflatmap (Position p)
+      (let x = (vx p))
+      (let y = (vy p))
       (let new-x =
         (cond
           ((> x (to-float width)) 0.0)
@@ -201,25 +191,13 @@ an object at POS2 with bounding box SZ2."
           ((> y (to-float height)) 0.0)
           ((< y 0.0) (to-float height))
           (True y)))
-      (let new-pos = (Vector2 new-x new-y))
-      (do-when-val (s s?)
-        (do-when (/= v new-pos)
-          (let ang =
-            (match ang?
-              ((Some a) (get-angle a))
-              ((None) 0.0)))
-          (coords-shape s new-pos ang)))
+      (let new-pos = (vec2 new-x new-y))
       (pure (Position new-pos))))
 
   (declare remove-entity (Entity -> System_ Unit))
   (define (remove-entity ety)
-    "Fully remove ETY from the system. Delet its shape from
-the canvas if it has one."
-    (do
-     (do-when-valM (shape (get? ety))
-       (canvas <- (get global-ent))
-       (delete-shape canvas shape))
-     (remove ety AllComponents)))
+    "Fully remove ETY from the system."
+    (remove ety AllComponents))
 
   (declare countdown (System_ Unit))
   (define countdown
@@ -249,31 +227,29 @@ the canvas if it has one."
   (define (main-loop)
     (do
      countdown
-     move-all
+     ;; move-all
      (wrap width height)
      destroy-collissions
-     (after frame-delay (main-loop))))
+     draw-all-shapes))
+     ;; (after frame-delay (main-loop))))
 
   (declare main (IO Unit))
   (define main
-    (do-with-tk
+    (do-with-window (WindowConfig (to-ufix width) (to-ufix height) "Asteroids" (to-ufix FPS))
      (w <- init-world)
-     (run-with w
-       (do
-        (canvas <- (init-canvas (to-ufix width) (to-ufix height) "white"))
-        ;; TODO: wrap ltk:focus in the library
-        (wrap-io
-          (lisp :a (canvas)
-            (ltk:focus canvas)))
-        (bind canvas "<KeyPress-Right>" (rotate-player player-rot-speed))
-        (bind canvas "<KeyPress-Left>" (rotate-player (* -1 player-rot-speed)))
-        (bind canvas "<KeyPress-Up>" (accelerate-player (Vector2 0.0 0.1)))
-        (bind canvas "<KeyPress-Down>" (accelerate-player (Vector2 0.0 -0.1)))
-        (bind canvas "<KeyPress-space>" shoot-bullet)
-        (spawn-player (Vector2 300.0 300.0))
-        (spawn-asteroid (Vector2 200.0 200.0) (Vector2 0.0 0.0))
-        (main-loop)
-        ))))
+     (do-run-with w
+       (spawn-player (vec2 300.0 300.0))
+       (spawn-asteroid (vec2 200.0 200.0) (vec2 0.0 0.0))
+       (do-loop-do-while window-should-close
+         (do-with-drawing
+           (clear-background (color :raywhite))
+           ;; (bind canvas "<KeyPress-Right>" (rotate-player player-rot-speed))
+           ;; (bind canvas "<KeyPress-Left>" (rotate-player (* -1 player-rot-speed)))
+           ;; (bind canvas "<KeyPress-Up>" (accelerate-player (Vector2 0.0 0.1)))
+           ;; (bind canvas "<KeyPress-Down>" (accelerate-player (Vector2 0.0 -0.1)))
+           ;; (bind canvas "<KeyPress-space>" shoot-bullet)
+           (main-loop)
+           )))))
 
   (declare run-main (Unit -> Unit))
   (define (run-main)

@@ -3,36 +3,37 @@
   (:use
    #:coalton
    #:coalton-prelude
-   #:coalton-library/classes
-   #:coalton-library/monad/environment
-   #:io/monad-io
-   #:io/term
-   #:io/simple-io
+   ;; #:coalton-library/classes
+   ;; #:coalton-library/monad/environment
+   ;; #:io/monad-io
+   ;; #:io/term
+   ;; #:io/simple-io
    #:ecs
    #:ecs/utils
+   #:ecs/vectors
    )
-  (:local-nicknames
-   (:l #:coalton-library/list)
-   (:opt #:coalton-library/optional))
-  (:import-from #:coalton-library/math/real
-   #:round)
-  (:import-from #:coalton-library/math/elementary
-   #:sqrt
-   #:sin
-   #:cos)
+  ;; (:local-nicknames
+  ;;  (:l #:coalton-library/list)
+  ;;  (:opt #:coalton-library/optional))
+  ;; (:import-from #:coalton-library/math/real
+  ;;  #:round)
+  ;; (:import-from #:coalton-library/math/elementary
+  ;;  #:sqrt
+  ;;  #:sin
+  ;;  #:cos)
   (:export
-   #:Vector2
-   #:v->list
-   #:v->ints
-   #:ints->v
-   #:v-x
-   #:v-y
-   #:v+
-   #:v-
-   #:rotate-vector
-   #:rotate-vectors
-   #:v-magnitude
-   #:v-distance
+   ;; #:Vector2
+   ;; #:v->list
+   ;; #:v->ints
+   ;; #:ints->v
+   ;; #:v-x
+   ;; #:v-y
+   ;; #:v+
+   ;; #:v-
+   ;; #:rotate-vector
+   ;; #:rotate-vectors
+   ;; #:v-magnitude
+   ;; #:v-distance
    #:Position
    #:Velocity
    #:Size
@@ -50,84 +51,84 @@
   ;;;             Vector2               ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (derive Eq)
-  (define-type Vector2
-    (Vector2 Single-Float Single-Float))
+  ;; (derive Eq)
+  ;; (define-type Vector2
+  ;;   (Vector2 Single-Float Single-Float))
 
-  (inline)
-  (declare v->list (Vector2 -> List Single-Float))
-  (define (v->list (Vector2 x y))
-    (make-list x y))
+  ;; (inline)
+  ;; (declare v->list (Vector2 -> List Single-Float))
+  ;; (define (v->list (Vector2 x y))
+  ;;   (make-list x y))
 
-  (inline)
-  (declare v->ints (Vector2 -> List Integer))
-  (define (v->ints (Vector2 x y))
-    (make-list (round x) (round y)))
+  ;; (inline)
+  ;; (declare v->ints (Vector2 -> List Integer))
+  ;; (define (v->ints (Vector2 x y))
+  ;;   (make-list (round x) (round y)))
 
-  (inline)
-  (declare ints->v (List Integer -> Vector2))
-  (define (ints->v ints)
-    (Vector2
-     (to-float
-      (opt:from-some "List not long enough"
-                     (l:index 0 ints)))
-     (to-float
-      (opt:from-some "List not long enough"
-                     (l:index 1 ints)))))
+  ;; (inline)
+  ;; (declare ints->v (List Integer -> Vector2))
+  ;; (define (ints->v ints)
+  ;;   (Vector2
+  ;;    (to-float
+  ;;     (opt:from-some "List not long enough"
+  ;;                    (l:index 0 ints)))
+  ;;    (to-float
+  ;;     (opt:from-some "List not long enough"
+  ;;                    (l:index 1 ints)))))
 
-  (inline)
-  (declare v-x (Vector2 -> Single-Float))
-  (define (v-x (Vector2 x _))
-    x)
+  ;; (inline)
+  ;; (declare v-x (Vector2 -> Single-Float))
+  ;; (define (v-x (Vector2 x _))
+  ;;   x)
 
-  (inline)
-  (declare v-y (Vector2 -> Single-Float))
-  (define (v-y (Vector2 _ y))
-    y)
+  ;; (inline)
+  ;; (declare v-y (Vector2 -> Single-Float))
+  ;; (define (v-y (Vector2 _ y))
+  ;;   y)
 
-  (inline)
-  (declare v+ (Vector2 -> Vector2 -> Vector2))
-  (define (v+ (Vector2 ax ay) (Vector2 bx by))
-    (Vector2 (+ ax bx) (+ ay by)))
+  ;; (inline)
+  ;; (declare v+ (Vector2 -> Vector2 -> Vector2))
+  ;; (define (v+ (Vector2 ax ay) (Vector2 bx by))
+  ;;   (Vector2 (+ ax bx) (+ ay by)))
 
-  (inline)
-  (declare v- (Vector2 -> Vector2 -> Vector2))
-  (define (v- (Vector2 ax ay) (Vector2 bx by))
-    (Vector2 (- ax bx) (- ay by)))
+  ;; (inline)
+  ;; (declare v- (Vector2 -> Vector2 -> Vector2))
+  ;; (define (v- (Vector2 ax ay) (Vector2 bx by))
+  ;;   (Vector2 (- ax bx) (- ay by)))
 
-  (declare rotate-vector (Single-Float -> Vector2 -> Vector2))
-  (define (rotate-vector theta (Vector2 x y))
-    (let ((c (cos theta))
-          (s (sin theta)))
-      (Vector2
-       (- (* x c) (* y s))
-       (+ (* x s) (* y c)))))
+  ;; (declare rotate-vector (Single-Float -> Vector2 -> Vector2))
+  ;; (define (rotate-vector theta (Vector2 x y))
+  ;;   (let ((c (cos theta))
+  ;;         (s (sin theta)))
+  ;;     (Vector2
+  ;;      (- (* x c) (* y s))
+  ;;      (+ (* x s) (* y c)))))
 
-  (declare rotate-vectors (Single-Float -> List Vector2 -> List Vector2))
-  (define (rotate-vectors theta vs)
-    (let ((c (cos theta))
-          (s (sin theta)))
-      (map
-       (fn ((Vector2 x y))
-         (Vector2
-          (- (* x c) (* y s))
-          (+ (* x s) (* y c))))
-       vs)))
+  ;; (declare rotate-vectors (Single-Float -> List Vector2 -> List Vector2))
+  ;; (define (rotate-vectors theta vs)
+  ;;   (let ((c (cos theta))
+  ;;         (s (sin theta)))
+  ;;     (map
+  ;;      (fn ((Vector2 x y))
+  ;;        (Vector2
+  ;;         (- (* x c) (* y s))
+  ;;         (+ (* x s) (* y c))))
+  ;;      vs)))
 
-  (inline)
-  (declare v-magnitude (Vector2 -> Single-Float))
-  (define (v-magnitude (Vector2 x y))
-    (sqrt (+ (* x x) (* y y))))
+  ;; (inline)
+  ;; (declare v-magnitude (Vector2 -> Single-Float))
+  ;; (define (v-magnitude (Vector2 x y))
+  ;;   (sqrt (+ (* x x) (* y y))))
 
-  (inline)
-  (declare v-distance (Vector2 -> Vector2 -> Single-Float))
-  (define (v-distance v1 v2)
-    (v-magnitude (v- v1 v2)))
+  ;; (inline)
+  ;; (declare v-distance (Vector2 -> Vector2 -> Single-Float))
+  ;; (define (v-distance v1 v2)
+  ;;   (v-magnitude (v- v1 v2)))
 
-  (define-instance (Into Vector2 String)
-    (inline)
-    (define (into (Vector2 x y))
-      (<> (<> (into x) ", ") (into y))))
+  ;; (define-instance (Into Vector2 String)
+  ;;   (inline)
+  ;;   (define (into (Vector2 x y))
+  ;;     (<> (<> (into x) ", ") (into y))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;            Components             ;;;

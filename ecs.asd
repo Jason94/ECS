@@ -12,7 +12,7 @@
                 ((:file "utils")
                  (:file "vectors")
                  (:file "core")
-                 ;; (:file "common")
+                 (:file "common")
                  ;; (:file "ltk")
                  (:file "raylib")
                  )))

@@ -13,7 +13,11 @@
    #:vec2
    #:vx
    #:vy
-   #:vlength
+   #:v+
+   #:v-
+   #:v-rot
+   #:v-length
+   #:v-distance
   ))
 
 (in-package :ecs/vectors)
@@ -46,10 +50,35 @@
       (v:vy vec)))
 
   (inline)
-  (declare vlength (Vector2 -> Single-Float))
-  (define (vlength vec)
+  (declare v+ (Vector2 -> Vector2 -> Vector2))
+  (define (v+ a b)
+    (lisp Vector2 (a b)
+      (v:v+ a b)))
+
+  (inline)
+  (declare v- (Vector2 -> Vector2 -> Vector2))
+  (define (v- a b)
+    (lisp Vector2 (a b)
+      (v:v- a b)))
+
+  (inline)
+  (declare v-rot (Single-Float -> Vector2 -> Vector2))
+  (define (v-rot phi vec)
+    "Rotate VEC by PHI radians."
+    (lisp Vector2 (phi vec)
+      (v:vrot2 vec phi)))
+
+  (inline)
+  (declare v-length (Vector2 -> Single-Float))
+  (define (v-length vec)
     (lisp Single-Float (vec)
       (v:vlength vec)))
+
+  (inline)
+  (declare v-distance (Vector2 -> Vector2 -> Single-Float))
+  (define (v-distance v1 v2)
+    (lisp Single-Float (v1 v2)
+      (v:vdistance v1 v2)))
 
   (define-instance (Eq Vector2)
     (define (== v1 v2)

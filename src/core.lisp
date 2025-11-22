@@ -33,6 +33,7 @@
 
    #:run-system
    #:run-with
+   #:do-run-with
 
    #:ExplInit
    #:expl-init
@@ -190,6 +191,11 @@
   (define-class ((Has :w :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
                  => HasGetMembers :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
   )
+
+(cl:defmacro do-run-with (world cl:&body body)
+  `(run-with ,world
+    (do
+     ,@body)))
 
 (coalton-toplevel
 

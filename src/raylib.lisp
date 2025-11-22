@@ -13,6 +13,7 @@
    #:io/simple-io
    #:ecs
    #:ecs/utils
+   #:ecs/common-components
    #:ecs/vectors
    )
   (:import-from #:coalton-library/math/real
@@ -22,9 +23,11 @@
    (:l   #:coalton-library/list)
    (:opt #:coalton-library/optional)
    (:rl  #:raylib)
-   (:v #:3d-vectors)
    )
   (:export
+   ;;;
+   ;;; Raylib Wrapper
+   ;;;
    #:Color
    #:color
 
@@ -44,6 +47,22 @@
    #:draw-circle-lines
    #:draw-circle-v
    #:draw-circle-lines-v
+   #:draw-triangle
+   #:draw-triangle-lines
+   #:draw-triangle-v
+   #:draw-triangle-lines-v
+
+   ;;;
+   ;;; ECS Integration
+   ;;;
+   #:DrawShape
+   #:DrawShapeStore
+   #:Circle
+   #:CircleOutline
+   #:Triangle
+   #:TriangleOutline
+   #:draw-shape
+   #:draw-all-shapes
    ))
 
 (in-package :ecs/raylib)
@@ -80,7 +99,7 @@
     (title String)
     (fps UFix))
 
-  (declare window-should-close (MonadIO :m => :m Boolean))
+  (declare window-should-close (MonadIo :m => :m Boolean))
   (define window-should-close
     (wrap-io
       (lisp Boolean ()
@@ -123,7 +142,7 @@
               (call-coalton-function f)))
           Unit))))
 
-  (declare clear-background (MonadIO :m => Color -> :m Unit))
+  (declare clear-background (MonadIo :m => Color -> :m Unit))
   (define (clear-background color)
     (wrap-io
       (lisp :a (color)
@@ -142,14 +161,14 @@
 
 (coalton-toplevel
 
-  (declare draw-fps (MonadIO :m => Integer -> Integer -> :m Unit))
+  (declare draw-fps (MonadIo :m => Integer -> Integer -> :m Unit))
   (define (draw-fps x y)
     (wrap-io
       (lisp :a (x y)
         (rl:draw-fps x y))
       Unit))
 
-  (declare draw-text ((MonadIO :m) (Into :s String) => :s -> Integer -> Integer -> Integer -> Color -> :m Unit))
+  (declare draw-text ((MonadIo :m) (Into :s String) => :s -> Integer -> Integer -> Integer -> Color -> :m Unit))
   (define (draw-text msg x y font-size color)
     (let str = (as String msg))
     (wrap-io
@@ -164,31 +183,103 @@
 
 (coalton-toplevel
 
-  (declare draw-circle (MonadIO :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle (MonadIo :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
   (define (draw-circle x y r color)
     (wrap-io
       (lisp :a (x y r color)
         (rl:draw-circle x y r color))
       Unit))
 
-  (declare draw-circle-v (MonadIO :m => Vector2 -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle-v (MonadIo :m => Vector2 -> Single-Float -> Color -> :m Unit))
   (define (draw-circle-v pos r color)
     (wrap-io
       (lisp :a (pos r color)
         (rl:draw-circle-v pos r color))
       Unit))
 
-  (declare draw-circle-lines (MonadIO :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle-lines (MonadIo :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
   (define (draw-circle-lines x y r color)
     (wrap-io
       (lisp :a (x y r color)
         (rl:draw-circle-lines x y r color))
       Unit))
 
-  (declare draw-circle-lines-v (MonadIO :m => Vector2 -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle-lines-v (MonadIo :m => Vector2 -> Single-Float -> Color -> :m Unit))
   (define (draw-circle-lines-v pos r color)
     (wrap-io
       (lisp :a (pos r color)
         (rl:draw-circle-lines-v pos r color))
       Unit))
+
+  (declare draw-triangle (MonadIo :m => Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (define (draw-triangle v1 v2 v3 color)
+    (wrap-io
+      (lisp :a (v1 v2 v3 color)
+        (rl:draw-triangle v1 v2 v3 color))
+      Unit))
+
+  (declare draw-triangle-lines (MonadIo :m => Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (define (draw-triangle-lines v1 v2 v3 color)
+    (wrap-io
+      (lisp :a (v1 v2 v3 color)
+        (rl:draw-triangle-lines v1 v2 v3 color))
+      Unit))
+
+  (declare draw-triangle-v (MonadIo :m  => Vector2 -> Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (define (draw-triangle-v pos v1 v2 v3 color)
+    (wrap-io
+      (let v1_ = (v+ pos v1))
+      (let v2_ = (v+ pos v2))
+      (let v3_ = (v+ pos v3))
+      (lisp :a (v1_ v2_ v3_ color)
+        (rl:draw-triangle v1_ v2_ v3_ color))
+      Unit))
+
+  (declare draw-triangle-lines-v (MonadIo :m  => Vector2 -> Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (define (draw-triangle-lines-v pos v1 v2 v3 color)
+    (wrap-io
+      (let v1_ = (v+ pos v1))
+      (let v2_ = (v+ pos v2))
+      (let v3_ = (v+ pos v3))
+      (lisp :a (v1_ v2_ v3_ color)
+        (rl:draw-triangle-lines v1_ v2_ v3_ color))
+      Unit))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;         ECS Integration           ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (define-type DrawShape
+    (Circle Single-Float Color)
+    (CircleOutline Single-Float Color)
+    (Triangle Vector2 Vector2 Vector2 Color)
+    (TriangleOutline Vector2 Vector2 Vector2 Color)
+    )
+
+  (define-type-alias DrawShapeStore (MapStore DrawShape))
+  (define-instance (Component DrawShapeStore DrawShape))
+
+  (declare draw-shape (MonadIo :m => Vector2 -> DrawShape -> :m Unit))
+  (define (draw-shape pos s)
+    (match s
+      ((Circle r color)
+       (draw-circle-v pos r color))
+      ((CircleOutline r color)
+       (draw-circle-lines-v pos r color))
+      ((Triangle v1 v2 v3 color)
+       (draw-triangle-v pos v1 v2 v3 color))
+      ((TriangleOutline v1 v2 v3 color)
+       (draw-triangle-lines-v pos v1 v2 v3 color))
+      ))
+
+  (declare draw-all-shapes ((MonadIo :m)
+                            (HasGetMembers :w :m DrawShapeStore DrawShape)
+                            (HasGet :w :m (MapStore Position) Position)
+                            => SystemT :w :m Unit))
+  (define draw-all-shapes
+    (do-cforeach (Tuple s (Position p))
+      (draw-shape p s)))
   )
