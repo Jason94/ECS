@@ -10,6 +10,7 @@
                 :serial t
                 :components
                 ((:file "utils")
+                 (:file "vectors")
                  (:file "core")
                  ;; (:file "common")
                  ;; (:file "ltk")
