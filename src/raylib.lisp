@@ -41,8 +41,10 @@
    #:draw-text
 
    #:draw-circle
+   #:draw-circle-lines
    #:draw-circle-v
-  ))
+   #:draw-circle-lines-v
+   ))
 
 (in-package :ecs/raylib)
 
@@ -174,5 +176,19 @@
     (wrap-io
       (lisp :a (pos r color)
         (rl:draw-circle-v pos r color))
+      Unit))
+
+  (declare draw-circle-lines (MonadIO :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
+  (define (draw-circle-lines x y r color)
+    (wrap-io
+      (lisp :a (x y r color)
+        (rl:draw-circle-lines x y r color))
+      Unit))
+
+  (declare draw-circle-lines-v (MonadIO :m => Vector2 -> Single-Float -> Color -> :m Unit))
+  (define (draw-circle-lines-v pos r color)
+    (wrap-io
+      (lisp :a (pos r color)
+        (rl:draw-circle-lines-v pos r color))
       Unit))
   )
