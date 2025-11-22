@@ -35,11 +35,13 @@
   (define width 700)
   (define height 700)
 
+  (define asteroid-radius 10.0)
+
   (define bullet-radius 3.0)
-  (define bullet-lifetime 100)
+  (define bullet-lifetime 90)
   (define bullet-speed 5.0)
 
-  (define player-rot-speed 0.07)
+  (define player-rot-speed 0.1)
   (define player-accel 0.12)
   (define player-bounding-radius 7.0)
   (define player-max-speed 12.0)
@@ -92,7 +94,6 @@
      ((Global EntityCounter)
       (MapStore Position)
       (MapStore Velocity)
-      (MapStore Size)
       (MapStore Angle)
       (MapStore Asteroid)
       (MapStore Bullet)
@@ -107,9 +108,8 @@
     (Tuple4
      Position
      Velocity
-     Size
-     (Tuple4
-      Asteroid
+     Asteroid
+     (Tuple3
       Bullet
       TicksToLive
       DrawShape)))
@@ -188,9 +188,8 @@ an object at POS2 with bounding box SZ2."
      (Tuple4
       (Position pos)
       (Velocity vel)
-      (Size (vec2 bullet-radius bullet-radius))
-      (Tuple3
-       (Circle bullet-radius (color :orange))
+      (Circle bullet-radius (color :orange))
+      (Tuple
        (TicksToLive bullet-lifetime)
        Bullet))))
 
@@ -205,10 +204,8 @@ an object at POS2 with bounding box SZ2."
      (Tuple4
       (Position pos)
       (Velocity vel)
-      (Size (vec2 10.0 10.0))
-      (Tuple
-       (Circle 10.0 (color :black))
-       Asteroid))))
+      (Circle asteroid-radius (color :black))
+      Asteroid)))
 
   (declare spawn-random-asteroid (Integer -> Integer -> System_ Unit))
   (define (spawn-random-asteroid width height)
@@ -220,21 +217,22 @@ an object at POS2 with bounding box SZ2."
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
-    (do-cflatmap (Position p)
-      (let x = (vx p))
-      (let y = (vy p))
-      (let new-x =
-        (cond
-          ((> x (to-float width)) 0.0)
-          ((< x 0.0) (to-float width))
-          (True x)))
-      (let new-y =
-        (cond
-          ((> y (to-float height)) 0.0)
-          ((< y 0.0) (to-float height))
-          (True y)))
-      (let new-pos = (vec2 new-x new-y))
-      (pure (Position new-pos))))
+    (cmap
+     (fn ((Position p))
+       (let x = (vx p))
+       (let y = (vy p))
+       (let new-x =
+         (cond
+           ((> x (to-float width)) 0.0)
+           ((< x 0.0) (to-float width))
+           (True x)))
+       (let new-y =
+         (cond
+           ((> y (to-float height)) 0.0)
+           ((< y 0.0) (to-float height))
+           (True y)))
+       (let new-pos = (vec2 new-x new-y))
+       (Position new-pos))))
 
   (declare remove-entity (Entity -> System_ Unit))
   (define (remove-entity ety)
@@ -250,9 +248,9 @@ an object at POS2 with bounding box SZ2."
 
   (declare destroy-collissions (System_ Unit))
   (define destroy-collissions
-    (do-cforeach-ety (ety1 (Tuple3 (Asteroid) (Position p1) (Size s1)))
-      (do-cforeach-ety (ety2 (Tuple3 (Bullet) (Position p2) (Size s2)))
-        (do-when (collides? p1 s1 p2 s2)
+    (do-cforeach-ety (ety1 (Tuple (Asteroid) (Position p1)))
+      (do-cforeach-ety (ety2 (Tuple (Bullet) (Position p2)))
+        (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
           (remove-entity ety1)
           (remove-entity ety2)))))
   )

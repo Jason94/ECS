@@ -63,6 +63,10 @@
    #:draw-triangle-v
    #:draw-triangle-lines-v
 
+   #:check-collision-circles
+   ;; #:check-collision-circle-line
+   #:check-collision-lines
+
    ;;;
    ;;; ECS Integration
    ;;;
@@ -309,6 +313,29 @@
       (lisp :a (v1_ v2_ v3_ color)
         (rl:draw-triangle-lines v1_ v2_ v3_ color))
       Unit))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;           Collisions              ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare check-collision-circles (Vector2 -> Single-Float -> Vector2 -> Single-Float -> Boolean))
+  (define (check-collision-circles pos1 r1 pos2 r2)
+    (lisp Boolean (pos1 r1 pos2 r2)
+      (rl:check-collision-circles pos1 r1 pos2 r2)))
+
+  ;; (declare check-collision-circle-line (Vector2 -> Single-Float -> Vector2 -> Vector2 -> Boolean))
+  ;; (define (check-collision-circle-line pos1 r1 start2 end2)
+  ;;   (lisp Boolean (pos1 r1 start2 end2)
+  ;;     (rl:check-collision-circle-line
+
+  (declare check-collision-lines (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Boolean))
+  (define (check-collision-lines p11 p12 p21 p22)
+    "Check if the line from P11 to P22 intersects with the line from P21 to P22."
+    (lisp Boolean (p11 p12 p21 p22)
+      (rl:check-collision-lines p11 p12 p21 p22 (cffi:null-pointer))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
