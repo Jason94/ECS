@@ -5,13 +5,14 @@
   :maintainer "Jason Walker"
   :mailto "Jason0@pm.me"
   :license "MIT"
-  :depends-on ("coalton" "named-readtables" "coalton-io" "ltk" "cl-raylib")
+  :depends-on ("coalton" "named-readtables" "coalton-io" "ltk" "cl-raylib" "3d-vectors")
   :components ((:module "src"
                 :serial t
                 :components
                 ((:file "utils")
                  (:file "core")
-                 (:file "common")
-                 (:file "ltk")
+                 ;; (:file "common")
+                 ;; (:file "ltk")
+                 (:file "raylib")
                  )))
   )
