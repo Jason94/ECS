@@ -108,6 +108,22 @@
   (define-type-alias (System_ :a)
     (System World :a))
 
+  (declare radial-size (Vector2 -> Single-Float))
+  (define (radial-size size)
+    "Get the radius of the largest circle that fits inside a
+bounding rectangle of dimensions SIZE."
+    (let (Vector2 w h) = size)
+    (min
+     (/ h 2)
+     (/ w 2)))
+
+  (declare collides? (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Boolean))
+  (define (collides? pos1 sz1 pos2 sz2)
+    "Check if an object at POS1 with bounding box SZ1 collides with
+an object at POS2 with bounding box SZ2."
+    (< (v-distance pos1 pos2)
+       (+ (radial-size sz1) (radial-size sz2))))
+
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
     (do
@@ -211,6 +227,14 @@ the canvas if it has one."
       (do-if (> rem 0)
           (set ety (TicksToLive (- rem 1)))
         (remove-entity ety))))
+
+  (declare destroy-collissions (System_ Unit))
+  (define destroy-collissions
+    (do-cforeach-ety (ety1 (Tuple3 (Asteroid) (Position p1) (Size s1)))
+      (do-cforeach-ety (ety2 (Tuple3 (Bullet) (Position p2) (Size s2)))
+        (do-when (collides? p1 s1 p2 s2)
+          (remove-entity ety1)
+          (remove-entity ety2)))))
   )
 
 (named-readtables:in-readtable :standard)
@@ -227,6 +251,7 @@ the canvas if it has one."
      countdown
      move-all
      (wrap width height)
+     destroy-collissions
      (after frame-delay (main-loop))))
 
   (declare main (IO Unit))
@@ -246,7 +271,7 @@ the canvas if it has one."
         (bind canvas "<KeyPress-Down>" (accelerate-player (Vector2 0.0 -0.1)))
         (bind canvas "<KeyPress-space>" shoot-bullet)
         (spawn-player (Vector2 300.0 300.0))
-        ;; (spawn-asteroid (Vector2 0.0 0.0) (Vector2 0.5 -0.75))
+        (spawn-asteroid (Vector2 200.0 200.0) (Vector2 0.0 0.0))
         (main-loop)
         ))))
 
