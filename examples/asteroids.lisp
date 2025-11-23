@@ -26,6 +26,15 @@
 
 (named-readtables:in-readtable coalton:coalton)
 
+;;;;
+;;;; Implements a simple Asteroid game using ECS. Run `(ecs-asteroids:play)` to play.
+;;;; Use Left, Right, and Up to move and Spacebar to shoot. Escape exists the game.
+;;;;
+;;;; Demonstrates how to set up a game with several components, draw, and check for
+;;;; collisions. Also demonstrates how to use a custom finite state machine to manage
+;;;; different UI states for an intro screen, playing the game, and a game over screen.
+;;;;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;             Constants             ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -509,4 +518,3 @@ to transition into, or NONE to stay in the same mode."
 (cl:defun play ()
   (call-coalton-function run-main))
 
-(play)

@@ -141,7 +141,6 @@
     "Run a system in a game world."
     ev:run-envT)
 
-  (inline)
   (declare run-with (:w -> SystemT :w :m :a -> :m :a))
   (define (run-with world sys)
     "Run a system in a game world."
@@ -418,7 +417,6 @@
 
   (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
                     => ExplGet :m (Unique :c) :c)
-    (inline)
     (define (expl-get (Unique% var) _)
       (do
        (comp? <- (m:read var))
@@ -427,7 +425,6 @@
           (pure comp))
          ((None)
           (error "Reading non-existent unique component.")))))
-    (inline)
     (define (expl-exists? (Unique% var) id _)
       (do
        (comp? <- (m:read var))
@@ -447,7 +444,6 @@
 
   (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
                     => ExplMembers :m (Unique :c) :c)
-    (inline)
     (define (expl-members (Unique% var) _)
       (do
        (c? <- (m:read var))
@@ -459,7 +455,6 @@
 
   (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
                     => ExplDestroy :m (Unique :c) :c)
-    (inline)
     (define (expl-remove (Unique% var) id _)
       (do
        (comp? <- (m:read var))
@@ -484,7 +479,6 @@
 
   (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
                     => ExplGet :m (MapStore :c) :c)
-    (inline)
     (define (expl-get (MapStore% var) id)
       (do
        (map <- (m:read var))
@@ -624,7 +618,6 @@
 
   (define-instance ((ExplMembers :m :s1 :c1) (ExplGet :m :s2 :c2)
                     => ExplMembers :m (Tuple :s1 :s2) (Tuple :c1 :c2))
-    (inline)
     (define (expl-members (Tuple s1 s2) c1c2-prox)
       ;; TODO: This can probably be optimized... Check Haskell U.filterM
       ;; Also fused.
@@ -640,7 +633,6 @@
 
   (define-instance ((ExplDestroy :m :s1 :c1) (ExplDestroy :m :s2 :c2)
                     => ExplDestroy :m (Tuple :s1 :s2) (Tuple :c1 :c2))
-    (inline)
     (define (expl-remove (Tuple s1 s2) enty-id c1c2-prox)
       (let prx1 = (as-proxy-of-tup1 c1c2-prox))
       (let prx2 = (as-proxy-of-tup2 c1c2-prox))
@@ -670,13 +662,11 @@
                     => ExplGet :m
                     (Tuple3 :s1 :s2 :s3)
                     (Tuple3 :c1 :c2 :c3))
-    (inline)
     (define (expl-get (Tuple3 s1 s2 s3) ety-id)
       (liftAn Tuple3
               (expl-get s1 ety-id)
               (expl-get s2 ety-id)
               (expl-get s3 ety-id)))
-    (inline)
     (define (expl-exists? (Tuple3 s1 s2 s3) ety-id prx-c1c2c3)
       (liftAn (fn (a b c) (and a (and b c)))
               (expl-exists? s1 ety-id (as-proxy-of-tup31 prx-c1c2c3))
@@ -701,7 +691,6 @@
                     => ExplMembers :m
                     (Tuple3 :s1 :s2 :s3)
                     (Tuple3 :c1 :c2 :c3))
-    (inline)
     (define (expl-members (Tuple3 s1 s2 s3) c1c2c3-prox)
       ;; TODO: This can probably be optimized... Check Haskell U.filterM
       ;; Also fused.
@@ -727,7 +716,6 @@
   (define-instance ((ExplDestroy :m :s1 :c1) (ExplDestroy :m :s2 :c2)
                     (ExplDestroy :m :s3 :c3)
                     => ExplDestroy :m (Tuple3 :s1 :s2 :s3) (Tuple3 :c1 :c2 :c3))
-    (inline)
     (define (expl-remove (Tuple3 s1 s2 s3) enty-id tup-prox)
       (let prx1 = (as-proxy-of-tup31 tup-prox))
       (let prx2 = (as-proxy-of-tup32 tup-prox))
@@ -748,8 +736,8 @@
       (do
        (s1 <- (get-store))
        (s2 <- (get-store))
-        (s3 <- (get-store))
-        (pure (Tuple3 s1 s2 s3)))))
+       (s3 <- (get-store))
+       (pure (Tuple3 s1 s2 s3)))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;               Tuple4              ;;;
@@ -768,14 +756,12 @@
                     => ExplGet :m
                     (Tuple4 :s1 :s2 :s3 :s4)
                     (Tuple4 :c1 :c2 :c3 :c4))
-    (inline)
     (define (expl-get (Tuple4 s1 s2 s3 s4) ety-id)
       (liftAn Tuple4
               (expl-get s1 ety-id)
               (expl-get s2 ety-id)
               (expl-get s3 ety-id)
               (expl-get s4 ety-id)))
-    (inline)
     (define (expl-exists? (Tuple4 s1 s2 s3 s4) ety-id prx-c1c2c3c4)
       (liftAn (fn (a b c d) (and a (and b (and c d))))
               (expl-exists? s1 ety-id (as-proxy-of-tup41 prx-c1c2c3c4))
@@ -804,7 +790,6 @@
                     => ExplMembers :m
                     (Tuple4 :s1 :s2 :s3 :s4)
                     (Tuple4 :c1 :c2 :c3 :c4))
-    (inline)
     (define (expl-members (Tuple4 s1 s2 s3 s4) c1c2c3c4-prox)
       ;; TODO: This can probably be optimized... Check Haskell U.filterM
       ;; Also fused.
@@ -837,7 +822,6 @@
   (define-instance ((ExplDestroy :m :s1 :c1) (ExplDestroy :m :s2 :c2)
                     (ExplDestroy :m :s3 :c3) (ExplDestroy :m :s4 :c4)
                     => ExplDestroy :m (Tuple4 :s1 :s2 :s3 :s4) (Tuple4 :c1 :c2 :c3 :c4))
-    (inline)
     (define (expl-remove (Tuple4 s1 s2 s3 s4) enty-id tup-prox)
       (let prx1 = (as-proxy-of-tup41 tup-prox))
       (let prx2 = (as-proxy-of-tup42 tup-prox))
@@ -908,7 +892,6 @@ delete a component using Some and None, respectively."
       (map OptionalStore (get-store))))
 
   (define-instance (ExplGet :m :s :c => ExplGet :m (OptionalStore :s) (Optional :c))
-    (inline)
     (define (expl-get (OptionalStore s) ety-id)
       (do
        (let c-prx = t:Proxy)
@@ -924,7 +907,6 @@ delete a component using Some and None, respectively."
 
   (define-instance ((ExplSet :m :s :c) (ExplDestroy :m :s :c) =>
                     ExplSet :m (OptionalStore :s) (Optional :c))
-    (inline)
     (define (expl-set (OptionalStore s) ety-id c?)
       (let c-prx = (t:proxy-inner (t:proxy-of c?)))
       (match c?
@@ -955,7 +937,6 @@ both components, returns the Left component."
        (pure (EitherStore s1 s2)))))
 
   (define-instance ((ExplGet :m :s1 :c1) (ExplGet :m :s2 :c2) => ExplGet :m (EitherStore :s1 :s2) (Either :c1 :c2))
-    (inline)
     (define (expl-get (EitherStore s1 s2) ety-id)
       (do
        (c1? <- (expl-get? s1 ety-id))
@@ -963,7 +944,6 @@ both components, returns the Left component."
              (pure (Left c1))
          (c2 <- (expl-get s2 ety-id))
          (pure (Right c2)))))
-    (inline)
     (define (expl-exists? (EitherStore s1 s2) ety-id c-prx)
       (do
        (let prx1 = (as-proxy-of-left c-prx))
