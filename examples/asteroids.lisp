@@ -278,16 +278,21 @@
   (define draw-score
     (do
      ((Score s) <- (get global-ent))
-     (draw-text (<> "Score: " (into s)) (- width 120) 20 20 (color :green))))
+     (draw-text (<> "Score: " (into s)) (- width 120) 20 22 (color :lime))))
 
   (declare destroy-collissions (System_ Unit))
   (define destroy-collissions
-    (do-cforeach-ety (ety1 (Tuple (Asteroid) (Position p1)))
-      (do-cforeach-ety (ety2 (Tuple (Bullet) (Position p2)))
-        (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
-          increment-score
-          (remove-entity ety1)
-          (remove-entity ety2)))))
+    (do
+     (etys-to-remove <- (mut:new-var Nil))
+     (do-cforeach-ety (ety1 (Tuple (Asteroid) (Position p1)))
+       (do-cforeach-ety (ety2 (Tuple (Bullet) (Position p2)))
+         (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
+           increment-score
+           (mut:modify etys-to-remove (Cons ety1))
+           (mut:modify etys-to-remove (Cons ety2)))))
+     (etys-to-remove <- (mut:read etys-to-remove))
+     (do-foreach (ety etys-to-remove)
+       (remove-entity ety))))
 
   (declare check-game-over (System_ Unit))
   (define check-game-over

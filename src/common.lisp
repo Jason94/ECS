@@ -38,7 +38,8 @@
    #:Velocity
    #:Size
    #:Angle
-   #:get-angle)
+   #:get-angle
+   #:MarkForDelete)
   )
 
 (in-package :ecs/common-components)
@@ -160,9 +161,16 @@
   (define (get-angle (Angle a))
     a)
 
+  (derive Eq)
+  (repr :enum)
+  (define-type MarkForDelete
+    "Useful to mark an entity to be removed at the end of the update loop."
+    MarkForDelete)
+
   (define-instance (Component (MapStore Position) Position))
   (define-instance (Component (MapStore Velocity) Velocity))
   (define-instance (Component (MapStore Size) Size))
   (define-instance (Component (MapStore Angle) Angle))
+  (define-instance (Component (MapStore MarkForDelete) MarkForDelete))
 
   )

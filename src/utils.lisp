@@ -34,6 +34,8 @@
    #:as-proxy-of-tup42
    #:as-proxy-of-tup43
    #:as-proxy-of-tup44
+
+   #:build-str
    ))
 
 (in-package :ecs/utils)
@@ -172,3 +174,9 @@
   (define (as-proxy-of-tup44 _)
     t:Proxy)
   )
+
+(cl:defmacro build-str (cl:&rest str-parts)
+  "Concatenate all STR-PARTS."
+  `(fold <> "" (make-list ,@(cl:mapcar (cl:lambda (clause)
+                                         `(as String ,clause))
+                                       str-parts))))
