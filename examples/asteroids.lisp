@@ -91,20 +91,6 @@
 
   (define-instance (Component (Global GameMode) GameMode))
 
-  ;; (derive Eq)
-  ;; (repr :transparent)
-  ;; (define-type GameOver
-  ;;   (GameOver Boolean))
-
-  ;; (define-instance (SemiGroup GameOver)
-  ;;   (define (<> _ _)
-  ;;     (error "Don't call <> on GameOver")))
-
-  ;; (define-instance (Monoid GameOver)
-  ;;   (define mempty (GameOver False)))
-
-  ;; (define-instance (Component (Global GameOver) GameOver))
-
   (derive Eq)
   (repr :transparent)
   (define-type Score
@@ -150,7 +136,6 @@
   (define-world World
       ((Global EntityCounter)
        (Global GameMode)
-       ;; (Global GameOver)
        (Global Score)
        (MapStore Position)
        (MapStore Velocity)
@@ -344,15 +329,14 @@
        shoot-bullet)
      (do-whenM (is-key-pressed KeyUp)
        show-player-flame)
-      (do-whenM (is-key-released KeyUp)
-        hide-player-flame)
-      (do-whenM (is-key-down KeyUp)
-        (accelerate-player player-accel))
-      (do-whenM (is-key-down KeyLeft)
-        (rotate-player (* -1 player-rot-speed)))
-      (do-whenM (is-key-down KeyRight)
-        (rotate-player player-rot-speed))
-      ))
+     (do-whenM (is-key-released KeyUp)
+       hide-player-flame)
+     (do-whenM (is-key-down KeyUp)
+       (accelerate-player player-accel))
+     (do-whenM (is-key-down KeyLeft)
+       (rotate-player (* -1 player-rot-speed)))
+     (do-whenM (is-key-down KeyRight)
+       (rotate-player player-rot-speed))))
   )
 
 (coalton-toplevel
@@ -504,10 +488,6 @@ to transition into, or NONE to stay in the same mode."
   (declare should-close (System_ Boolean))
   (define should-close
     window-should-close)
-  ;; (do
-  ;;  (signal-close? <- window-should-close)
-  ;;  ((GameOver over?) <- (get global-ent))
-  ;;  (pure (or signal-close? over?))))
 
   (declare main (IO Unit))
   (define main
@@ -520,14 +500,11 @@ to transition into, or NONE to stay in the same mode."
           (do-when-val (next-mode next-mode?)
             cleanup-game-mode
             (set global-ent next-mode)
-            enter-game-mode)
-            )
-        )))
+            enter-game-mode)))))
 
   (declare run-main (Unit -> Unit))
   (define (run-main)
-    (run-io! main))
-  )
+    (run-io! main)))
 
 (cl:defun play ()
   (call-coalton-function run-main))
