@@ -74,8 +74,6 @@
    #:do-cflatmap
    #:cforeach
    #:do-cforeach
-   #:cforeach-ety
-   #:do-cforeach-ety
 
    #:Global
    #:global-ent
@@ -126,6 +124,7 @@
   (define-class (Component :storage :c (:storage -> :c) (:c -> :storage))
     "A component that can be a property of an entity.")
 
+  ;; TODO: Possibly remove the Elem class? Or use it for something?
   (define-class (Elem :s :c (:s -> :c)))
 
   (repr :enum)
@@ -323,25 +322,6 @@
        (m-op a))))
   )
 
-(coalton-toplevel
-
-  (declare cforeach-ety ((Has :w :m :sa :c)
-                         (ExplGet :m :sa :c) (ExplMembers :m :sa :c)
-                         => (Entity -> :c -> SystemT :w :m :a)
-                         -> SystemT :w :m Unit))
-  (define (cforeach-ety m-op)
-    "Iterate over each entity and its component using M-OP."
-    ;; TODO: Write a fused version, like above comment.
-    (do
-     (let prx-a = (proxy-of-arg2 m-op))
-     (sa <- (get-store))
-     (members <- (members_ prx-a))
-     (do-foreach (ety members)
-       (let ety-id = (entity-id ety))
-       (a <- (lift (expl-get sa ety-id)))
-       (m-op ety a))))
-  )
-
 (cl:defmacro exists? (ety comp-type)
   "Check if ETY has a component of COMP-TYPE."
   `(exists?_ ,ety (the (t:Proxy ,comp-type) t:Proxy)))
@@ -363,12 +343,6 @@
 (cl:defmacro do-cflatmap (comp-form cl:&body body)
   `(cflatmap
     (fn (,comp-form)
-      (do
-       ,@body))))
-
-(cl:defmacro do-cforeach-ety ((ety comp-form) cl:&body body)
-  `(cforeach-ety
-    (fn (,ety ,comp-form)
       (do
        ,@body))))
 
@@ -886,6 +860,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (coalton-toplevel
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;         Entity Components         ;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (define-instance (Monad :m => Has :w :m EntityStore Entity)
+    (inline)
+    (define (get-store)
+      (pure EntityStore)))
+
+  (define-instance (Monad :m => ExplGet :m EntityStore Entity)
+    (inline)
+    (define (expl-get _ ety-id)
+      (pure (Entity% ety-id)))
+    (inline)
+    (define (expl-exists? _ _ _)
+      (pure True)))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;        Optional Components        ;;;

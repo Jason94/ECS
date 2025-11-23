@@ -38,7 +38,7 @@
 
   (define asteroid-min-speed 1.0)
   (define asteroid-max-speed 3.0)
-  (define asteroid-radius 10.0)
+  (define asteroid-radius 15.0)
   (define asteroid-bounding-circle
     (Circle asteroid-radius))
 
@@ -269,7 +269,7 @@
 
   (declare countdown (System_ Unit))
   (define countdown
-    (do-cforeach-ety (ety (TicksToLive rem))
+    (do-cforeach (Tuple (TicksToLive rem) ety)
       (do-if (> rem 0)
           (set ety (TicksToLive (- rem 1)))
         (remove-entity ety))))
@@ -290,8 +290,8 @@
   (define destroy-collissions
     (do
      (etys-to-remove <- (mut:new-var Nil))
-     (do-cforeach-ety (ety1 (Tuple (Asteroid) (Position p1)))
-       (do-cforeach-ety (ety2 (Tuple (Bullet) (Position p2)))
+     (do-cforeach (Tuple3 (Asteroid) ety1 (Position p1))
+       (do-cforeach (Tuple3 (Bullet) ety2 (Position p2))
          (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
            increment-score
            (mut:modify etys-to-remove (Cons ety1))
@@ -367,9 +367,8 @@
      (w <- init-world)
      (do-run-with w
        (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
-       ;; (do-loop-times (_ 5)
-         (spawn-random-asteroid width height)
-       ;; )
+       (do-loop-times (_ 5)
+         (spawn-random-asteroid width height))
        (do-loop-do-while should-close
          (do-with-drawing
            (clear-background (color :raywhite))
