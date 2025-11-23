@@ -36,6 +36,12 @@
    #:as-proxy-of-tup44
 
    #:build-str
+
+   #:Either
+   #:Left
+   #:Right
+   #:as-proxy-of-left
+   #:as-proxy-of-right
    ))
 
 (in-package :ecs/utils)
@@ -180,3 +186,18 @@
   `(fold <> "" (make-list ,@(cl:mapcar (cl:lambda (clause)
                                          `(as String ,clause))
                                        str-parts))))
+
+(coalton-toplevel
+
+  (define-type (Either :a :b)
+    (Left :a)
+    (Right :b))
+
+  (declare as-proxy-of-left (t:Proxy (Either :a :b) -> t:Proxy :a))
+  (define (as-proxy-of-left _)
+    t:Proxy)
+
+  (declare as-proxy-of-right (t:Proxy (Either :a :b) -> t:Proxy :b))
+  (define (as-proxy-of-right _)
+    t:Proxy)
+  )

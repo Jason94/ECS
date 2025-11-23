@@ -324,11 +324,11 @@
   (declare check-game-over (System_ Boolean))
   (define check-game-over
     (do
-     ((Tuple (Player) (Position p1)) <- (get global-ent))
-     (game-over? <- (mut:new-var False))
-      (do-cforeach (Tuple (Asteroid) (Position p2))
-        (when_ (shapes-collide? p1 player-bounding-triangle p2 asteroid-bounding-circle)
-               (mut:write game-over? True)))
+      (game-over? <- (mut:new-var False))
+      (do-cforeach (Tuple (Player) (Position p1))
+        (do-cforeach (Tuple (Asteroid) (Position p2))
+          (when_ (shapes-collide? p1 player-bounding-triangle p2 asteroid-bounding-circle)
+                 (mut:write game-over? True))))
       (mut:read game-over?)))
 
   (declare move-all (System_ Unit))
@@ -353,16 +353,16 @@
       (do-whenM (is-key-down KeyRight)
         (rotate-player player-rot-speed))
       ))
+  )
+
+(coalton-toplevel
 
   (declare enter-play-mode (System_ Unit))
   (define enter-play-mode
     (do
-     (write-line "Spawning player")
      (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
-     (write-line "Spawning asteroids")
      (do-loop-times (_ 5)
-       (spawn-random-asteroid width height))
-     (write-line "Done spawning asteroids")))
+       (spawn-random-asteroid width height))))
 
   (declare loop-play-mode (System_ (Optional GameMode)))
   (define loop-play-mode
@@ -371,7 +371,7 @@
      handle-input
      countdown
      move-all
-      (wrap width height)
+     (wrap width height)
      destroy-collissions
      (game-over? <- check-game-over)
 
@@ -389,8 +389,9 @@
   (declare cleanup-play-mode (System_ Unit))
   (define cleanup-play-mode
     (do
-     ((Tuple (Player) player-ety) <- (get global-ent))
-     (ents-to-remove <- (mut:new-var (make-list player-ety)))
+     (ents-to-remove <- (mut:new-var Nil))
+     (do-cforeach (Tuple (Player) ety)
+       (mut:modify ents-to-remove (Cons ety)))
      (do-cforeach (Tuple (Asteroid) ety)
        (mut:modify ents-to-remove (Cons ety)))
      (do-cforeach (Tuple (Bullet) ety)

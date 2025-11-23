@@ -216,6 +216,17 @@
      (s <- (get-store))
      (lift (expl-exists? s id comp-prx))))
 
+  (declare expl-get? (ExplGet :m :s :c => :s -> EntityId -> :m (Optional :c)))
+  (define (expl-get? store ety-id)
+    (do
+     (let prx = t:Proxy)
+     (has-c? <- (expl-exists? store ety-id prx))
+     (if has-c?
+         (do
+          (c <- (expl-get store ety-id))
+          (pure (Some (t:as-proxy-of c prx))))
+         (pure None))))
+
   (declare get? (HasGet :w :m :s :c => Entity -> SystemT :w :m (Optional :c)))
   (define (get? ety)
     (let c-prx = t:Proxy)
@@ -534,8 +545,9 @@
       (EntityCounter%
        (+ a b))))
 
+  ;; NOTE: Starts at 1 so that 0 can represent global entities.
   (define-instance (Monoid EntityCounter)
-    (define mempty (EntityCounter% 0)))
+    (define mempty (EntityCounter% 1)))
 
   (define-instance (Component (Global EntityCounter) EntityCounter))
 
@@ -549,7 +561,7 @@
     (do
      ((EntityCounter% n) <- (get global-ent))
      (set global-ent (EntityCounter% (+ n 1)))
-      (pure (Entity% n))))
+     (pure (Entity% n))))
 
   (declare new-entity ((Has :w :m (Global EntityCounter) EntityCounter)
                        (Has :w :m :s :c)
@@ -562,7 +574,7 @@
     (do
      (ent <- next-entity)
      (set ent comp)
-      (pure ent)))
+     (pure ent)))
 
   (declare new-entity_ ((Has :w :m (Global EntityCounter) EntityCounter)
                         (Has :w :m :s :c)
@@ -920,6 +932,59 @@ delete a component using Some and None, respectively."
          (expl-remove s ety-id c-prx))
         ((Some c)
          (expl-set s ety-id c)))))
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;         Either Components         ;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (define-type (EitherStore :s1 :s2)
+    "Composite store used to produce values of either type,
+stored in :s1 or :s2. If you try to get an entity that has
+both components, returns the Left component."
+    (EitherStore :s1 :s2))
+
+  (define-instance ((Component :s1 :c1) (Component :s2 :c2)
+                    => Component (EitherStore :s1 :s2) (Either :c1 :c2)))
+
+  (define-instance ((Has :w :m :s1 :c1) (Has :w :m :s2 :c2) => Has :w :m (EitherStore :s1 :s2) (Either :c1 :c2))
+    (inline)
+    (define (get-store)
+      (do
+       (s1 <- (get-store))
+       (s2 <- (get-store))
+       (pure (EitherStore s1 s2)))))
+
+  (define-instance ((ExplGet :m :s1 :c1) (ExplGet :m :s2 :c2) => ExplGet :m (EitherStore :s1 :s2) (Either :c1 :c2))
+    (inline)
+    (define (expl-get (EitherStore s1 s2) ety-id)
+      (do
+       (c1? <- (expl-get? s1 ety-id))
+       (do-if-val (c1 c1?)
+             (pure (Left c1))
+         (c2 <- (expl-get s2 ety-id))
+         (pure (Right c2)))))
+    (inline)
+    (define (expl-exists? (EitherStore s1 s2) ety-id c-prx)
+      (do
+       (let prx1 = (as-proxy-of-left c-prx))
+       (let prx2 = (as-proxy-of-right c-prx))
+       (e1? <- (expl-exists? s1 ety-id prx1))
+       (do-if e1?
+           (pure True)
+         (e2? <- (expl-exists? s2 ety-id prx2))
+         (if e2?
+             (pure True)
+             (pure False))))))
+
+  (define-instance ((ExplMembers :m :s1 :c1) (ExplMembers :m :s2 :c2)
+                    => ExplMembers :m (EitherStore :s1 :s2) (Either :c1 :c2))
+    (define (expl-members (EitherStore s1 s2) c1c2-prox)
+      (do
+       (let prx1 = (as-proxy-of-left c1c2-prox))
+       (let prx2 = (as-proxy-of-right c1c2-prox))
+       (mems1 <- (expl-members s1 prx1))
+       (mems2 <- (expl-members s2 prx2))
+       (pure (l:union mems1 mems2)))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
