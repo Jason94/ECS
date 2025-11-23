@@ -378,12 +378,13 @@
        ;; (do-loop-times (_ 5)
          (spawn-random-asteroid width height)
        ;; )
-       (do-loop-do-while should-close
-         (do-with-drawing
-           (clear-background (color :raywhite))
-           (draw-fps 20 20)
-           main-loop
-           )))))
+       ;; (do-loop-do-while should-close
+       ;;   (do-with-drawing
+       ;;     (clear-background (color :raywhite))
+       ;;     (draw-fps 20 20)
+       ;;     main-loop
+       ;;     ))
+       )))
 
   (declare run-main (Unit -> Unit))
   (define (run-main)
