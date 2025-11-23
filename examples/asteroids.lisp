@@ -84,6 +84,20 @@
   (define-instance (Component (Global GameOver) GameOver))
 
   (derive Eq)
+  (repr :transparent)
+  (define-type Score
+    (Score Integer))
+
+  (define-instance (SemiGroup Score)
+    (define (<> _ _)
+      (error "Don't call <> on Score")))
+
+  (define-instance (Monoid Score)
+    (define mempty (Score 0)))
+
+  (define-instance (Component (Global Score) Score))
+
+  (derive Eq)
   (define-type Asteroid
     Asteroid)
 
@@ -114,6 +128,7 @@
   (define-world World
      ((Global EntityCounter)
       (Global GameOver)
+      (Global Score)
       (MapStore Position)
       (MapStore Velocity)
       (MapStore Angle)
@@ -135,6 +150,9 @@
       Bullet
       TicksToLive
       DrawShape)))
+
+  (define-type-alias (System_ :a)
+    (System World :a))
   )
 
 (coalton-toplevel
@@ -142,17 +160,6 @@
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;              Systems              ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (define-type-alias (System_ :a)
-    (System World :a))
-
-  (declare radial-size (Vector2 -> Single-Float))
-  (define (radial-size size)
-    "Get the radius of the largest circle that fits inside a
-bounding rectangle of dimensions SIZE."
-    (min
-     (/ (vy size) 2)
-     (/ (vx size) 2)))
 
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
@@ -261,11 +268,24 @@ bounding rectangle of dimensions SIZE."
           (set ety (TicksToLive (- rem 1)))
         (remove-entity ety))))
 
+  (declare increment-score (System_ Unit))
+  (define increment-score
+    (do
+     ((Score s) <- (get global-ent))
+     (set global-ent (Score (+ s 1)))))
+
+  (declare draw-score (System_ Unit))
+  (define draw-score
+    (do
+     ((Score s) <- (get global-ent))
+     (draw-text (<> "Score: " (into s)) (- width 120) 20 20 (color :green))))
+
   (declare destroy-collissions (System_ Unit))
   (define destroy-collissions
     (do-cforeach-ety (ety1 (Tuple (Asteroid) (Position p1)))
       (do-cforeach-ety (ety2 (Tuple (Bullet) (Position p2)))
         (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
+          increment-score
           (remove-entity ety1)
           (remove-entity ety2)))))
 
@@ -320,6 +340,7 @@ bounding rectangle of dimensions SIZE."
 
      ;;; Draw
      draw-all-shapes
+     draw-score
      ))
 
   (declare should-close (System_ Boolean))
