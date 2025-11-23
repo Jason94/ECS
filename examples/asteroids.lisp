@@ -361,6 +361,7 @@
   (define enter-play-mode
     (do
      (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
+     (set global-ent (Score 0))
      (do-loop-times (_ 5)
        (spawn-random-asteroid width height))))
 
@@ -390,11 +391,8 @@
   (define cleanup-play-mode
     (do
      (ents-to-remove <- (mut:new-var Nil))
-     (do-cforeach (Tuple (Player) ety)
-       (mut:modify ents-to-remove (Cons ety)))
-     (do-cforeach (Tuple (Asteroid) ety)
-       (mut:modify ents-to-remove (Cons ety)))
-     (do-cforeach (Tuple (Bullet) ety)
+     (do-cforeach (Tuple obj ety)
+       (let _ = (the (Either (Either Player Asteroid) Bullet) obj))
        (mut:modify ents-to-remove (Cons ety)))
      (ents-to-remove <- (mut:read ents-to-remove))
      (do-foreach (ety ents-to-remove)
