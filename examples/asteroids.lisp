@@ -36,6 +36,8 @@
   (define width 700)
   (define height 700)
 
+  (define asteroid-min-speed 1.0)
+  (define asteroid-max-speed 3.0)
   (define asteroid-radius 10.0)
   (define asteroid-bounding-circle
     (Circle asteroid-radius))
@@ -235,7 +237,19 @@
     (do
      (x <- (random_ width))
      (y <- (random_ height))
-     (spawn-asteroid (vec2 (to-float x) (to-float y)) (vec2 0 0))))
+     (let speed-range = (- asteroid-max-speed asteroid-min-speed))
+     (wrap-io (traceobject "speed-range" speed-range))
+     (foo <- (random_ 2.0))
+     (wrap-io
+       (traceobject "foo" foo)
+       Unit)
+     ;; (wrap-io (traceobject "foo" foo))
+     ;; (speed-offset <- (random_ (- asteroid-max-speed asteroid-min-speed)))
+     ;; (vel-ang <- (random_ (* 2 3.1415)))
+     ;; (let _vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
+     ;; (wrap-io (traceobject "speed-offset" speed-offset))
+     ;; (wrap-io (traceobject "vel-ang" vel-ang))
+     (spawn-asteroid (vec2 (to-float x) (to-float y)) (vec2 0.0 0.0))))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
@@ -361,7 +375,9 @@
      (w <- init-world)
      (do-run-with w
        (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
-       (spawn-asteroid (vec2 200.0 200.0) (vec2 0.0 0.0))
+       ;; (do-loop-times (_ 5)
+         (spawn-random-asteroid width height)
+       ;; )
        (do-loop-do-while should-close
          (do-with-drawing
            (clear-background (color :raywhite))
