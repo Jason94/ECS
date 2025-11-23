@@ -252,11 +252,11 @@
     (do
      (x <- (random_ width))
      (y <- (random_ height))
-      (let speed-range = (- asteroid-max-speed asteroid-min-speed))
-      (speed-offset <- (random_ speed-range))
-      (vel-ang <- (random_ (* 2 3.1415)))
-      (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
-      (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
+     (let speed-range = (- asteroid-max-speed asteroid-min-speed))
+     (speed-offset <- (random_ speed-range))
+     (vel-ang <- (random_ (* 2 3.1415)))
+     (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
+     (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
@@ -517,4 +517,3 @@ to transition into, or NONE to stay in the same mode."
 
 (cl:defun play ()
   (call-coalton-function run-main))
-
