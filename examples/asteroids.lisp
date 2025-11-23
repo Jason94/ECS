@@ -69,21 +69,41 @@
      Fill))
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;            Components             ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (coalton-toplevel
 
   (derive Eq)
-  (repr :transparent)
-  (define-type GameOver
-    (GameOver Boolean))
+  (repr :enum)
+  (define-type GameMode
+    IntroScreen
+    PlayGame
+    GameOver)
 
-  (define-instance (SemiGroup GameOver)
+  (define-instance (SemiGroup GameMode)
     (define (<> _ _)
-      (error "Don't call <> on GameOver")))
+      (error "Don't call <> on GameMode")))
 
-  (define-instance (Monoid GameOver)
-    (define mempty (GameOver False)))
+  (define-instance (Monoid GameMode)
+    (define mempty IntroScreen))
 
-  (define-instance (Component (Global GameOver) GameOver))
+  (define-instance (Component (Global GameMode) GameMode))
+
+  ;; (derive Eq)
+  ;; (repr :transparent)
+  ;; (define-type GameOver
+  ;;   (GameOver Boolean))
+
+  ;; (define-instance (SemiGroup GameOver)
+  ;;   (define (<> _ _)
+  ;;     (error "Don't call <> on GameOver")))
+
+  ;; (define-instance (Monoid GameOver)
+  ;;   (define mempty (GameOver False)))
+
+  ;; (define-instance (Component (Global GameOver) GameOver))
 
   (derive Eq)
   (repr :transparent)
@@ -128,17 +148,18 @@
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (define-world World
-     ((Global EntityCounter)
-      (Global GameOver)
-      (Global Score)
-      (MapStore Position)
-      (MapStore Velocity)
-      (MapStore Angle)
-      (MapStore Asteroid)
-      (MapStore Bullet)
-      (Unique Player)
-      (MapStore TicksToLive)
-      (MapStore DrawShape)))
+      ((Global EntityCounter)
+       (Global GameMode)
+       ;; (Global GameOver)
+       (Global Score)
+       (MapStore Position)
+       (MapStore Velocity)
+       (MapStore Angle)
+       (MapStore Asteroid)
+       (MapStore Bullet)
+       (Unique Player)
+       (MapStore TicksToLive)
+       (MapStore DrawShape)))
 
   ;; Type alias for all of the components a game
   ;; object might have. Used when trying to delete
@@ -157,11 +178,11 @@
     (System World :a))
   )
 
-(coalton-toplevel
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;             Play Mode             ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;              Systems              ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(coalton-toplevel
 
   (declare spawn-player (Vector2 -> System_ Unit))
   (define (spawn-player pos)
@@ -237,11 +258,11 @@
     (do
      (x <- (random_ width))
      (y <- (random_ height))
-     (let speed-range = (- asteroid-max-speed asteroid-min-speed))
-     (speed-offset <- (random_ speed-range))
-     (vel-ang <- (random_ (* 2 3.1415)))
-     (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
-     (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
+      (let speed-range = (- asteroid-max-speed asteroid-min-speed))
+      (speed-offset <- (random_ speed-range))
+      (vel-ang <- (random_ (* 2 3.1415)))
+      (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
+      (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
@@ -296,30 +317,25 @@
            increment-score
            (mut:modify etys-to-remove (Cons ety1))
            (mut:modify etys-to-remove (Cons ety2)))))
-     (etys-to-remove <- (mut:read etys-to-remove))
-     (do-foreach (ety etys-to-remove)
-       (remove-entity ety))))
+      (etys-to-remove <- (mut:read etys-to-remove))
+      (do-foreach (ety etys-to-remove)
+        (remove-entity ety))))
 
-  (declare check-game-over (System_ Unit))
+  (declare check-game-over (System_ Boolean))
   (define check-game-over
     (do
      ((Tuple (Player) (Position p1)) <- (get global-ent))
-     (do-cforeach (Tuple (Asteroid) (Position p2))
-       (when_ (shapes-collide? p1 player-bounding-triangle p2 asteroid-bounding-circle)
-              (set global-ent (GameOver True))))))
-  )
-
-(coalton-toplevel
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;               Main                ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+     (game-over? <- (mut:new-var False))
+      (do-cforeach (Tuple (Asteroid) (Position p2))
+        (when_ (shapes-collide? p1 player-bounding-triangle p2 asteroid-bounding-circle)
+               (mut:write game-over? True)))
+      (mut:read game-over?)))
 
   (declare move-all (System_ Unit))
   (define move-all
     "Move all (Position Velocity) components by their velocity."
     (cmap (fn ((Tuple (Position p) (Velocity v)))
-      (Position (v+ p v)))))
+            (Position (v+ p v)))))
 
   (declare handle-input (System_ Unit))
   (define handle-input
@@ -328,54 +344,186 @@
        shoot-bullet)
      (do-whenM (is-key-pressed KeyUp)
        show-player-flame)
-     (do-whenM (is-key-released KeyUp)
-       hide-player-flame)
-     (do-whenM (is-key-down KeyUp)
-       (accelerate-player player-accel))
-     (do-whenM (is-key-down KeyLeft)
-       (rotate-player (* -1 player-rot-speed)))
-     (do-whenM (is-key-down KeyRight)
-       (rotate-player player-rot-speed))
-     ))
+      (do-whenM (is-key-released KeyUp)
+        hide-player-flame)
+      (do-whenM (is-key-down KeyUp)
+        (accelerate-player player-accel))
+      (do-whenM (is-key-down KeyLeft)
+        (rotate-player (* -1 player-rot-speed)))
+      (do-whenM (is-key-down KeyRight)
+        (rotate-player player-rot-speed))
+      ))
 
-  (declare main-loop (System_ Unit))
-  (define main-loop
+  (declare enter-play-mode (System_ Unit))
+  (define enter-play-mode
+    (do
+     (write-line "Spawning player")
+     (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
+     (write-line "Spawning asteroids")
+     (do-loop-times (_ 5)
+       (spawn-random-asteroid width height))
+     (write-line "Done spawning asteroids")))
+
+  (declare loop-play-mode (System_ (Optional GameMode)))
+  (define loop-play-mode
     (do
      ;;; Update
      handle-input
      countdown
      move-all
-     (wrap width height)
+      (wrap width height)
      destroy-collissions
-     check-game-over
+     (game-over? <- check-game-over)
 
      ;;; Draw
-     draw-all-shapes
-     draw-score
-     ))
+     (do-with-drawing
+       (clear-background (color :raywhite))
+       (draw-fps 20 20)
+       draw-all-shapes
+       draw-score)
+
+     (if game-over?
+         (pure (Some GameOver))
+         (pure None))))
+
+  (declare cleanup-play-mode (System_ Unit))
+  (define cleanup-play-mode
+    (do
+     ((Tuple (Player) player-ety) <- (get global-ent))
+     (ents-to-remove <- (mut:new-var (make-list player-ety)))
+     (do-cforeach (Tuple (Asteroid) ety)
+       (mut:modify ents-to-remove (Cons ety)))
+     (do-cforeach (Tuple (Bullet) ety)
+       (mut:modify ents-to-remove (Cons ety)))
+     (ents-to-remove <- (mut:read ents-to-remove))
+     (do-foreach (ety ents-to-remove)
+       (remove-entity ety))
+     (pure Unit)))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;            Intro Mode             ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare enter-intro-mode (System_ Unit))
+  (define enter-intro-mode
+    (pure Unit))
+
+  (declare loop-intro-mode (System_ (Optional GameMode)))
+  (define loop-intro-mode
+    (do
+     (do-with-drawing
+       (clear-background (color :raywhite))
+       (draw-text "Welcome to Asteroids!" 120 220 42 (color :darkgray))
+       (draw-text "Press ENTER to Start" 160 280 32 (color :gray)))
+     (next? <- (is-key-pressed KeyEnter))
+     (if next?
+         (pure (Some PlayGame))
+         (pure None))))
+
+  (declare cleanup-intro-mode (System_ Unit))
+  (define cleanup-intro-mode
+    (pure Unit))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;          Game Over Mode           ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare enter-over-mode (System_ Unit))
+  (define enter-over-mode
+    (pure Unit))
+
+  (declare loop-over-mode (System_ (Optional GameMode)))
+  (define loop-over-mode
+    (do
+     (do-with-drawing
+       (clear-background (color :raywhite))
+       (draw-text "GAME OVER!" 120 220 42 (color :darkgray))
+       (draw-text "Press ENTER to Try Again" 160 280 32 (color :gray)))
+     (next? <- (is-key-pressed KeyEnter))
+     (if next?
+         (pure (Some PlayGame))
+         (pure None))))
+
+  (declare cleanup-over-mode (System_ Unit))
+  (define cleanup-over-mode
+    (pure Unit))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;     Game Mode State Machine       ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare enter-game-mode (System_ Unit))
+  (define enter-game-mode
+    "Set up the next game mode."
+    (matchM (get global-ent)
+      ((IntroScreen)
+       enter-intro-mode)
+      ((PlayGame)
+       enter-play-mode)
+      ((GameOver)
+       enter-over-mode)))
+
+  (declare loop-game-mode (System_ (Optional GameMode)))
+  (define loop-game-mode
+    "Run the main loop for the game mode. Return the next game mode
+to transition into, or NONE to stay in the same mode."
+    (matchM (get global-ent)
+      ((IntroScreen)
+       loop-intro-mode)
+      ((PlayGame)
+       loop-play-mode)
+      ((GameOver)
+       loop-over-mode)))
+
+  (declare cleanup-game-mode (System_ Unit))
+  (define cleanup-game-mode
+    "Clean up game mode to prepare for next game mode."
+    (matchM (get global-ent)
+      ((IntroScreen)
+       cleanup-intro-mode)
+      ((PlayGame)
+       cleanup-play-mode)
+      ((GameOver)
+       cleanup-over-mode)))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;               Main                ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
 
   (declare should-close (System_ Boolean))
   (define should-close
-    (do
-     (signal-close? <- window-should-close)
-     ((GameOver over?) <- (get global-ent))
-     (pure (or signal-close? over?))))
+    window-should-close)
+  ;; (do
+  ;;  (signal-close? <- window-should-close)
+  ;;  ((GameOver over?) <- (get global-ent))
+  ;;  (pure (or signal-close? over?))))
 
   (declare main (IO Unit))
   (define main
     (do-with-window (WindowConfig (to-ufix width) (to-ufix height) "Asteroids" (to-ufix FPS))
-     (w <- init-world)
-     (do-run-with w
-       (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
-       (do-loop-times (_ 5)
-         (spawn-random-asteroid width height))
-       (do-loop-do-while should-close
-         (do-with-drawing
-           (clear-background (color :raywhite))
-           (draw-fps 20 20)
-           main-loop
-           ))
-       )))
+      (w <- init-world)
+      (do-run-with w
+        enter-game-mode
+        (do-loop-do-while should-close
+          (next-mode? <- loop-game-mode)
+          (do-when-val (next-mode next-mode?)
+            cleanup-game-mode
+            (set global-ent next-mode)
+            enter-game-mode)
+            )
+        )))
 
   (declare run-main (Unit -> Unit))
   (define (run-main)

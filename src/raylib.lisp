@@ -42,6 +42,7 @@
    #:KeyLeft
    #:KeyUp
    #:KeyDown
+   #:KeyEnter
    #:KeySpace
    #:is-key-pressed
    #:is-key-down
@@ -161,6 +162,7 @@
     KeyLeft
     KeyUp
     KeyDown
+    KeyEnter
     KeySpace)
 
   (repr :native cl:symbol)
@@ -174,6 +176,7 @@
         (Key/KeyLeft :key-left)
         (Key/KeyUp :key-up)
         (Key/KeyDown :key-down)
+        (Key/KeyEnter :key-enter)
         (Key/KeySpace :key-space)
         )))
 
