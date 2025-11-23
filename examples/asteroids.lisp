@@ -238,18 +238,10 @@
      (x <- (random_ width))
      (y <- (random_ height))
      (let speed-range = (- asteroid-max-speed asteroid-min-speed))
-     (wrap-io (traceobject "speed-range" speed-range))
-     (foo <- (random_ 2.0))
-     (wrap-io
-       (traceobject "foo" foo)
-       Unit)
-     ;; (wrap-io (traceobject "foo" foo))
-     ;; (speed-offset <- (random_ (- asteroid-max-speed asteroid-min-speed)))
-     ;; (vel-ang <- (random_ (* 2 3.1415)))
-     ;; (let _vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
-     ;; (wrap-io (traceobject "speed-offset" speed-offset))
-     ;; (wrap-io (traceobject "vel-ang" vel-ang))
-     (spawn-asteroid (vec2 (to-float x) (to-float y)) (vec2 0.0 0.0))))
+     (speed-offset <- (random_ speed-range))
+     (vel-ang <- (random_ (* 2 3.1415)))
+     (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
+     (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
 
   (declare wrap (Integer -> Integer -> System_ Unit))
   (define (wrap width height)
@@ -378,12 +370,12 @@
        ;; (do-loop-times (_ 5)
          (spawn-random-asteroid width height)
        ;; )
-       ;; (do-loop-do-while should-close
-       ;;   (do-with-drawing
-       ;;     (clear-background (color :raywhite))
-       ;;     (draw-fps 20 20)
-       ;;     main-loop
-       ;;     ))
+       (do-loop-do-while should-close
+         (do-with-drawing
+           (clear-background (color :raywhite))
+           (draw-fps 20 20)
+           main-loop
+           ))
        )))
 
   (declare run-main (Unit -> Unit))
