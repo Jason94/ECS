@@ -44,6 +44,11 @@
    #:do-with-window
    #:window-should-close
 
+   #:show-cursor
+   #:hide-cursor
+   #:cursor-hidden?
+   #:cursor-on-screen?
+
    #:Key
    #:KeyRight
    #:KeyLeft
@@ -76,15 +81,41 @@
    #:draw-rectangle-lines-v
    #:draw-rectangle-rec
 
+   #:Camera2D
+   #:make-camera2d
+   #:camera2d-offset_
+   #:camera2d-target_
+   #:camera2d-rotation_
+   #:camera2d-zoom_
+   #:set-camera2d-offset_
+   #:set-camera2d-target_
+   #:set-camera2d-rotation_
+   #:set-camera2d-zoom_
+   #:with-camera2d_
+
    #:check-collision-circles
    #:check-collision-circle-line
    #:check-collision-lines
    #:check-collision-rects
    #:check-collision-circle-rec
 
+   #:get-frame-time
+   #:get-time
+
    ;;;
    ;;; ECS Integration
    ;;;
+   #:initialize-camera
+   #:camera2d-offset
+   #:camera2d-target
+   #:camera2d-rotation
+   #:camera2d-zoom
+   #:set-camera2d-offset
+   #:set-camera2d-target
+   #:set-camera2d-rotation
+   #:set-camera2d-zoom
+   #:with-camera2d
+
    #:Shape
    #:Circle
    #:Triangle
@@ -199,6 +230,43 @@
   `(with-window ,window-config
      (do
       ,@body)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;              Cursor               ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare show-cursor (MonadIo :m => :m Unit))
+  (define show-cursor
+    "Show the cursor."
+    (wrap-io
+      (lisp :a ()
+        (rl:show-cursor))
+      Unit))
+
+  (declare hide-cursor (MonadIo :m => :m Unit))
+  (define hide-cursor
+    "Hide the cursor."
+    (wrap-io
+      (lisp :a ()
+        (rl:hide-cursor))
+      Unit))
+
+  (declare cursor-hidden? (MonadIo :m => :m Boolean))
+  (define cursor-hidden?
+    "Check if the cursor is hidden."
+    (wrap-io
+      (lisp Boolean ()
+        (rl:is-cursor-hidden))))
+
+  (declare cursor-on-screen? (MonadIo :m => :m Boolean))
+  (define cursor-on-screen?
+    "Check if the cursor is on the screen."
+    (wrap-io
+      (lisp Boolean ()
+        (rl:is-cursor-on-screen))))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;              Input                ;;;
@@ -414,6 +482,81 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;            Camera2D               ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (repr :native rl::camera2d)
+  (define-type Camera2D)
+
+  (declare make-camera2d (Unit -> Camera2D))
+  (define (make-camera2d)
+    (lisp Camera2D ()
+      (rl:make-camera2d)))
+
+  (declare camera2d-offset_ (Camera2D -> Vector2))
+  (define (camera2d-offset_ camera)
+    (lisp Vector2 (camera)
+      (rl:camera2d-offset camera)))
+
+  (declare camera2d-target_ (Camera2D -> Vector2))
+  (define (camera2d-target_ camera)
+    (lisp Vector2 (camera)
+      (rl:camera2d-target camera)))
+
+  (declare camera2d-rotation_ (Camera2D -> Single-Float))
+  (define (camera2d-rotation_ camera)
+    (lisp Single-Float (camera)
+      (rl:camera2d-rotation camera)))
+
+  (declare camera2d-zoom_ (Camera2D -> Single-Float))
+  (define (camera2d-zoom_ camera)
+    (lisp Single-Float (camera)
+      (rl:camera2d-zoom camera)))
+
+  (declare set-camera2d-offset_ (MonadIO :m => Vector2 -> Camera2D -> :m Unit))
+  (define (set-camera2d-offset_ offset camera)
+    (wrap-io
+      (lisp :a (offset camera)
+        (cl:setf (rl:camera2d-offset camera) offset))
+      Unit))
+
+  (declare set-camera2d-target_ (MonadIO :m => Vector2 -> Camera2D -> :m Unit))
+  (define (set-camera2d-target_ target camera)
+    (wrap-io
+      (lisp :a (target camera)
+        (cl:setf (rl:camera2d-target camera) target))
+      Unit))
+
+  (declare set-camera2d-rotation_ (MonadIO :m => Single-Float -> Camera2D -> :m Unit))
+  (define (set-camera2d-rotation_ rotation camera)
+    (wrap-io
+      (lisp :a (rotation camera)
+        (cl:setf (rl:camera2d-rotation camera) rotation))
+      Unit))
+
+  (declare set-camera2d-zoom_ (MonadIO :m => Single-Float -> Camera2D -> :m Unit))
+  (define (set-camera2d-zoom_ zoom camera)
+    (wrap-io
+      (lisp :a (zoom camera)
+        (cl:setf (rl:camera2d-zoom camera) zoom))
+      Unit))
+
+  (declare with-camera2d_ (MonadUnliftIo :m => Camera2D -> :m :a -> :m Unit))
+  (define (with-camera2d_ camera m-op)
+    "Run M-OP with CAMERA."
+    (with-run-in-io
+      (fn (run)
+        (let f = (run m-op))
+        (wrap-io
+          (lisp :a (camera f)
+            (rl:with-mode-2d (camera)
+              (call-coalton-function f)))
+          Unit))))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;           Collisions              ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -445,6 +588,122 @@
     (lisp Boolean (pos1 r1 rec2)
       (rl:check-collision-circle-rec pos1 r1 rec2)))
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;             Frames                ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+ (declare get-frame-time (MonadIo :m => :m Single-Float))
+ (define get-frame-time
+   "Get time in seconds for last frame drawn."
+   (wrap-io
+    (lisp Single-Float ()
+      (rl:get-frame-time))))
+
+  (declare get-time (MonadIo :m => :m Double-Float))
+  (define get-time
+    "Get elapsed time in seconds since init-window."
+    (wrap-io
+     (lisp Double-Float ()
+       (rl:get-time))))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;     ECS Integration - Camera      ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  ;; NOTE: Storing a mutable type in a component like this is DANGEROUS.
+  ;; Don't do this at home.
+  (define-instance (Component (Unique Camera2D) Camera2D))
+  (define-type-alias CameraStore (Unique Camera2D))
+
+  (declare initialize-camera (HasSet :w :m CameraStore Camera2D
+                              => SystemT :w :m Unit))
+  (define initialize-camera
+    "Initialize the Camera2D component with a new camera centered at (0,0)."
+    (set global-ent (make-camera2d)))
+
+  (declare camera2d-offset (HasGet :w :m CameraStore Camera2D
+                            => SystemT :w :m Vector2))
+  (define camera2d-offset
+    "Get the offset vector for the camera."
+    (do
+     (c <- (get global-ent))
+     (pure (camera2d-offset_ c))))
+
+  (declare camera2d-target (HasGet :w :m CameraStore Camera2D
+                            => SystemT :w :m Vector2))
+  (define camera2d-target
+    "Get the target vector for the camera."
+    (do
+     (c <- (get global-ent))
+     (pure (camera2d-target_ c))))
+
+  (declare camera2d-rotation (HasGet :w :m CameraStore Camera2D
+                              => SystemT :w :m Single-Float))
+  (define camera2d-rotation
+    "Get the rotation of the camera."
+    (do
+     (c <- (get global-ent))
+     (pure (camera2d-rotation_ c))))
+
+  (declare camera2d-zoom (HasGet :w :m CameraStore Camera2D
+                          => SystemT :w :m Single-Float))
+  (define camera2d-zoom
+    "Get the zoom factor of the camera."
+    (do
+     (c <- (get global-ent))
+     (pure (camera2d-zoom_ c))))
+
+  (declare set-camera2d-offset ((MonadIO :m)
+                                (HasGet :w :m CameraStore Camera2D)
+                                => Vector2 -> SystemT :w :m Unit))
+  (define (set-camera2d-offset offset)
+    "Set the offset vector for the camera."
+    (do
+     (c <- (get global-ent))
+     (set-camera2d-offset_ offset c)))
+
+  (declare set-camera2d-target ((MonadIO :m)
+                                (HasGet :w :m CameraStore Camera2D)
+                                => Vector2 -> SystemT :w :m Unit))
+  (define (set-camera2d-target target)
+    "Set the target vector for the camera."
+    (do
+     (c <- (get global-ent))
+     (set-camera2d-target_ target c)))
+
+  (declare set-camera2d-rotation ((MonadIO :m)
+                                  (HasGet :w :m CameraStore Camera2D)
+                                  => Single-Float -> SystemT :w :m Unit))
+  (define (set-camera2d-rotation rotation)
+    "Set the rotation of the camera."
+    (do
+     (c <- (get global-ent))
+     (set-camera2d-rotation_ rotation c)))
+
+  (declare set-camera2d-zoom ((MonadIO :m)
+                              (HasGet :w :m CameraStore Camera2D)
+                              => Single-Float -> SystemT :w :m Unit))
+  (define (set-camera2d-zoom zoom)
+    "Set the zoom factor of the camera."
+    (do
+     (c <- (get global-ent))
+     (set-camera2d-zoom_ zoom c)))
+
+  (declare with-camera2d ((MonadUnliftIo :m)
+                          (HasGet :w :m CameraStore Camera2D)
+                          => SystemT :w :m :a -> SystemT :w :m Unit))
+  (define (with-camera2d m-op)
+    "Run M-OP with the Camera2D stored in the (Unique Camera2D) component."
+    (do
+     (camera <- (get global-ent))
+     (with-camera2d_ camera m-op)))
+)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     ECS Integration - Drawing     ;;;
