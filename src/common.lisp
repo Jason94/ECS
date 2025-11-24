@@ -93,18 +93,19 @@
                            (HasGetSet :w :m (MapStore Velocity) Velocity)
                            (HasGet :w :m (MapStore Acceleration) Acceleration)
                            (HasGet :w :m (MapStore MaxVelocity) MaxVelocity)
-                           => SystemT :w :m Unit))
-  (define update-physics
+                           => Single-Float -> SystemT :w :m Unit))
+  (define (update-physics delta-time)
     "Updates all position/velocity/acceration components.
 Use the optional MaxVelocity component to limit entities' speed."
+    (let time-factor = (* 0.5 delta-time))
     (cmap
      (fn ((Tuple4 (Position p) (Velocity v) (Acceleration a) max-v?))
        (let new-v =
          (match (map get-max-vel max-v?)
            ((None)
-            (v+ v a))
+            (v+ v (v* a time-factor)))
            ((Some max-v)
-            (v-clamp max-v (v+ v a)))))
-       (let new-p = (v+ p new-v))
+            (v-clamp max-v (v+ v (v* a time-factor))))))
+       (let new-p = (v+ p (v* new-v time-factor)))
        (Tuple (Position new-p) (Velocity new-v)))))
   )

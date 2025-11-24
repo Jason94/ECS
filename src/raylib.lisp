@@ -92,6 +92,7 @@
    #:set-camera2d-rotation_
    #:set-camera2d-zoom_
    #:with-camera2d_
+   #:do-with-camera2d_
 
    #:check-collision-circles
    #:check-collision-circle-line
@@ -115,6 +116,7 @@
    #:set-camera2d-rotation
    #:set-camera2d-zoom
    #:with-camera2d
+   #:do-with-camera2d
 
    #:Shape
    #:Circle
@@ -556,6 +558,11 @@
           Unit))))
   )
 
+(cl:defmacro do-with-camera2d_ (camera cl:&body body)
+  `(with-camera2d_ ,camera
+     (do
+      ,@body)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;           Collisions              ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -704,6 +711,11 @@
      (camera <- (get global-ent))
      (with-camera2d_ camera m-op)))
 )
+
+(cl:defmacro do-with-camera2d (cl:&body body)
+  `(with-camera2d
+     (do
+      ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     ECS Integration - Drawing     ;;;
