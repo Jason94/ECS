@@ -228,12 +228,11 @@
   (declare expl-get? (ExplGet :m :s :c => :s -> EntityId -> :m (Optional :c)))
   (define (expl-get? store ety-id)
     (do
-     (let prx = t:Proxy)
-     (has-c? <- (expl-exists? store ety-id prx))
+     (has-c? <- (expl-exists? store ety-id))
      (if has-c?
          (do
           (c <- (expl-get store ety-id))
-          (pure (Some (t:as-proxy-of c prx))))
+          (pure (Some c)))
          (pure None))))
 
   (declare get? (HasGet :w :m :s :c => Entity -> SystemT :w :m (Optional :c)))
@@ -867,7 +866,7 @@
     (define (expl-get _ ety-id)
       (pure (Entity% ety-id)))
     (inline)
-    (define (expl-exists? _ _ _)
+    (define (expl-exists? _ _)
       (pure True)))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -939,26 +938,23 @@ both components, returns the Left component."
              (pure (Left c1))
          (c2 <- (expl-get s2 ety-id))
          (pure (Right c2)))))
-    (define (expl-exists? (EitherStore s1 s2) ety-id c-prx)
+    (define (expl-exists? (EitherStore s1 s2) ety-id)
       (do
-       (let prx1 = (as-proxy-of-left c-prx))
-       (let prx2 = (as-proxy-of-right c-prx))
-       (e1? <- (expl-exists? s1 ety-id prx1))
+       (e1? <- (expl-exists? s1 ety-id))
        (do-if e1?
            (pure True)
-         (e2? <- (expl-exists? s2 ety-id prx2))
+         (e2? <- (expl-exists? s2 ety-id))
          (if e2?
              (pure True)
              (pure False))))))
 
   (define-instance ((ExplMembers :m :s1 :c1) (ExplMembers :m :s2 :c2)
                     => ExplMembers :m (EitherStore :s1 :s2) (Either :c1 :c2))
-    (define (expl-members (EitherStore s1 s2) c1c2-prox)
+    (inline)
+    (define (expl-members (EitherStore s1 s2))
       (do
-       (let prx1 = (as-proxy-of-left c1c2-prox))
-       (let prx2 = (as-proxy-of-right c1c2-prox))
-       (mems1 <- (expl-members s1 prx1))
-       (mems2 <- (expl-members s2 prx2))
+       (mems1 <- (expl-members s1))
+       (mems2 <- (expl-members s2))
        (pure (l:union mems1 mems2)))))
   )
 
