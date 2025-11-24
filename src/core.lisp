@@ -11,7 +11,7 @@
    #:ecs/utils
    )
   (:import-from #:io/mut
-                #:MonadIoVar)
+   #:MonadIoVar)
   (:local-nicknames
    (:l #:coalton-library/list)
    (:t #:coalton-library/types)

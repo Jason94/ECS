@@ -45,6 +45,9 @@
   (define width 700)
   (define height 700)
 
+  (declare initial-level UFix)
+  (define initial-level 4)
+
   (define asteroid-min-speed 1.0)
   (define asteroid-max-speed 3.0)
   (define asteroid-radius 15.0)
@@ -89,6 +92,7 @@
   (define-type GameMode
     IntroScreen
     PlayGame
+    NextLevel
     GameOver)
 
   (define-instance (SemiGroup GameMode)
@@ -99,6 +103,20 @@
     (define mempty IntroScreen))
 
   (define-instance (Component (Global GameMode) GameMode))
+
+  (derive Eq)
+  (repr :transparent)
+  (define-type Level
+    (Level UFix))
+
+  (define-instance (SemiGroup Level)
+    (define (<> _ _)
+      (error "Don't call <> on Level")))
+
+  (define-instance (Monoid Level)
+    (define mempty (Level initial-level)))
+
+  (define-instance (Component (Global Level) Level))
 
   (derive Eq)
   (repr :transparent)
@@ -145,6 +163,7 @@
   (define-world World
       ((Global EntityCounter)
        (Global GameMode)
+       (Global Level)
        (Global Score)
        (MapStore Position)
        (MapStore Velocity)
@@ -325,6 +344,12 @@
                  (mut:write game-over? True))))
       (mut:read game-over?)))
 
+  (declare check-next-level (System_ Boolean))
+  (define check-next-level
+    (do
+     (asteroids <- (members Asteroid))
+     (pure (== (length asteroids) 0))))
+
   (declare move-all (System_ Unit))
   (define move-all
     "Move all (Position Velocity) components by their velocity."
@@ -354,8 +379,8 @@
   (define enter-play-mode
     (do
      (spawn-player (vec2 (/ (to-float width) 2.0) (/ (to-float height) 2.0)))
-     (set global-ent (Score 0))
-     (do-loop-times (_ 5)
+     ((Level l) <- (get global-ent))
+     (do-loop-times (_ l)
        (spawn-random-asteroid width height))))
 
   (declare loop-play-mode (System_ (Optional GameMode)))
@@ -368,6 +393,7 @@
      (wrap width height)
      destroy-collissions
      (game-over? <- check-game-over)
+     (next-level? <- check-next-level)
 
      ;;; Draw
      (do-with-drawing
@@ -378,7 +404,9 @@
 
      (if game-over?
          (pure (Some GameOver))
-         (pure None))))
+         (if next-level?
+             (pure (Some NextLevel))
+             (pure None)))))
 
   (declare cleanup-play-mode (System_ Unit))
   (define cleanup-play-mode
@@ -421,6 +449,35 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;          Next Level Mode          ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare enter-next-lvl-mode (System_ Unit))
+  (define enter-next-lvl-mode
+    (pure Unit))
+
+  (declare loop-next-lvl-mode (System_ (Optional GameMode)))
+  (define loop-next-lvl-mode
+    (do
+     (do-with-drawing
+       (clear-background (color :raywhite))
+       (draw-text "You Made it to the Next Level!" 65 230 38 (color :darkgray))
+       (draw-text "Press ENTER to Start" 160 290 32 (color :gray)))
+     (next? <- (is-key-pressed KeyEnter))
+     (if next?
+         (pure (Some PlayGame))
+         (pure None))))
+
+  (declare cleanup-next-lvl-mode (System_ Unit))
+  (define cleanup-next-lvl-mode
+    (do
+     ((Level l) <- (get global-ent))
+     (set global-ent (Level (+ l 1)))))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;          Game Over Mode           ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -444,7 +501,9 @@
 
   (declare cleanup-over-mode (System_ Unit))
   (define cleanup-over-mode
-    (pure Unit))
+    (do
+     (set global-ent (Level initial-level))
+     (set global-ent (Score 0))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -461,6 +520,8 @@
        enter-intro-mode)
       ((PlayGame)
        enter-play-mode)
+      ((NextLevel)
+       enter-next-lvl-mode)
       ((GameOver)
        enter-over-mode)))
 
@@ -473,6 +534,8 @@ to transition into, or NONE to stay in the same mode."
        loop-intro-mode)
       ((PlayGame)
        loop-play-mode)
+      ((NextLevel)
+       loop-next-lvl-mode)
       ((GameOver)
        loop-over-mode)))
 
@@ -484,6 +547,8 @@ to transition into, or NONE to stay in the same mode."
        cleanup-intro-mode)
       ((PlayGame)
        cleanup-play-mode)
+      ((NextLevel)
+       cleanup-next-lvl-mode)
       ((GameOver)
        cleanup-over-mode)))
   )
@@ -517,3 +582,5 @@ to transition into, or NONE to stay in the same mode."
 
 (cl:defun play ()
   (call-coalton-function run-main))
+
+(play)
