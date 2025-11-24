@@ -58,6 +58,8 @@
    #:HasMembers
    #:HasGetSet
    #:HasGetMembers
+   #:HasSetMembers
+   #:HasGetSetMembers
 
    #:get
    #:get?
@@ -197,6 +199,13 @@
 
   (define-class ((Has :w :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
                  => HasGetMembers :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
+
+  (define-class ((Has :w :m :s :c) (ExplSet :m :s :c) (ExplMembers :m :s :c)
+                 => HasSetMembers :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
+
+  (define-class ((Has :w :m :s :c) (ExplSet :m :s :c) (ExplMembers :m :s :c)
+                 (ExplGet :m :s :c)
+                 => HasGetSetMembers :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
   )
 
 (cl:defmacro do-run-with (world cl:&body body)
@@ -1009,7 +1018,11 @@ with STORE in the INDEX position and _ elsewhere."
     (define-instance ((Has ,world-name :m :s :c) (ExplGet :m :s :c) (ExplSet :m :s :c)
                       => HasGetSet ,world-name :m :s :c))
     (define-instance ((Has ,world-name :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
-                      => HasGetMembers ,world-name :m :s :c))))
+                      => HasGetMembers ,world-name :m :s :c))
+    (define-instance ((Has ,world-name :m :s :c) (ExplGet :m :s :c) (ExplMembers :m :s :c)
+                      (ExplSet :m :s :c)
+                      => HasGetSetMembers ,world-name :m :s :c))
+    ))
 
 (cl:defun %world-init-symbol (world-name)
   "Return the INIT-WORLD symbol in the same package as WORLD-NAME,

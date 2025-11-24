@@ -3,137 +3,33 @@
   (:use
    #:coalton
    #:coalton-prelude
-   ;; #:coalton-library/classes
-   ;; #:coalton-library/monad/environment
-   ;; #:io/monad-io
-   ;; #:io/term
-   ;; #:io/simple-io
    #:ecs
    #:ecs/utils
    #:ecs/vectors
    )
-  ;; (:local-nicknames
-  ;;  (:l #:coalton-library/list)
-  ;;  (:opt #:coalton-library/optional))
-  ;; (:import-from #:coalton-library/math/real
-  ;;  #:round)
-  ;; (:import-from #:coalton-library/math/elementary
-  ;;  #:sqrt
-  ;;  #:sin
-  ;;  #:cos)
   (:export
-   ;; #:Vector2
-   ;; #:v->list
-   ;; #:v->ints
-   ;; #:ints->v
-   ;; #:v-x
-   ;; #:v-y
-   ;; #:v+
-   ;; #:v-
-   ;; #:rotate-vector
-   ;; #:rotate-vectors
-   ;; #:v-magnitude
-   ;; #:v-distance
    #:Position
    #:Velocity
+   #:MaxVelocity
+   #:Acceleration
    #:Size
    #:Angle
    #:get-angle
-   #:MarkForDelete)
+
+   #:MaxVelocity
+   #:update-physics
+   )
   )
 
 (in-package :ecs/common-components)
 
 (named-readtables:in-readtable coalton:coalton)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;            Components             ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (coalton-toplevel
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;             Vector2               ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  ;; (derive Eq)
-  ;; (define-type Vector2
-  ;;   (Vector2 Single-Float Single-Float))
-
-  ;; (inline)
-  ;; (declare v->list (Vector2 -> List Single-Float))
-  ;; (define (v->list (Vector2 x y))
-  ;;   (make-list x y))
-
-  ;; (inline)
-  ;; (declare v->ints (Vector2 -> List Integer))
-  ;; (define (v->ints (Vector2 x y))
-  ;;   (make-list (round x) (round y)))
-
-  ;; (inline)
-  ;; (declare ints->v (List Integer -> Vector2))
-  ;; (define (ints->v ints)
-  ;;   (Vector2
-  ;;    (to-float
-  ;;     (opt:from-some "List not long enough"
-  ;;                    (l:index 0 ints)))
-  ;;    (to-float
-  ;;     (opt:from-some "List not long enough"
-  ;;                    (l:index 1 ints)))))
-
-  ;; (inline)
-  ;; (declare v-x (Vector2 -> Single-Float))
-  ;; (define (v-x (Vector2 x _))
-  ;;   x)
-
-  ;; (inline)
-  ;; (declare v-y (Vector2 -> Single-Float))
-  ;; (define (v-y (Vector2 _ y))
-  ;;   y)
-
-  ;; (inline)
-  ;; (declare v+ (Vector2 -> Vector2 -> Vector2))
-  ;; (define (v+ (Vector2 ax ay) (Vector2 bx by))
-  ;;   (Vector2 (+ ax bx) (+ ay by)))
-
-  ;; (inline)
-  ;; (declare v- (Vector2 -> Vector2 -> Vector2))
-  ;; (define (v- (Vector2 ax ay) (Vector2 bx by))
-  ;;   (Vector2 (- ax bx) (- ay by)))
-
-  ;; (declare rotate-vector (Single-Float -> Vector2 -> Vector2))
-  ;; (define (rotate-vector theta (Vector2 x y))
-  ;;   (let ((c (cos theta))
-  ;;         (s (sin theta)))
-  ;;     (Vector2
-  ;;      (- (* x c) (* y s))
-  ;;      (+ (* x s) (* y c)))))
-
-  ;; (declare rotate-vectors (Single-Float -> List Vector2 -> List Vector2))
-  ;; (define (rotate-vectors theta vs)
-  ;;   (let ((c (cos theta))
-  ;;         (s (sin theta)))
-  ;;     (map
-  ;;      (fn ((Vector2 x y))
-  ;;        (Vector2
-  ;;         (- (* x c) (* y s))
-  ;;         (+ (* x s) (* y c))))
-  ;;      vs)))
-
-  ;; (inline)
-  ;; (declare v-magnitude (Vector2 -> Single-Float))
-  ;; (define (v-magnitude (Vector2 x y))
-  ;;   (sqrt (+ (* x x) (* y y))))
-
-  ;; (inline)
-  ;; (declare v-distance (Vector2 -> Vector2 -> Single-Float))
-  ;; (define (v-distance v1 v2)
-  ;;   (v-magnitude (v- v1 v2)))
-
-  ;; (define-instance (Into Vector2 String)
-  ;;   (inline)
-  ;;   (define (into (Vector2 x y))
-  ;;     (<> (<> (into x) ", ") (into y))))
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;            Components             ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (derive Eq)
   (repr :transparent)
@@ -144,6 +40,21 @@
   (repr :transparent)
   (define-type Velocity
     (Velocity Vector2))
+
+  (derive Eq)
+  (repr :transparent)
+  (define-type MaxVelocity
+    (MaxVelocity Single-Float))
+
+  (inline)
+  (declare get-max-vel (MaxVelocity -> Single-Float))
+  (define (get-max-vel (MaxVelocity max-v))
+    max-v)
+
+  (derive Eq)
+  (repr :transparent)
+  (define-type Acceleration
+    (Acceleration Vector2))
 
   (derive Eq)
   (repr :transparent)
@@ -161,16 +72,39 @@
   (define (get-angle (Angle a))
     a)
 
-  (derive Eq)
-  (repr :enum)
-  (define-type MarkForDelete
-    "Useful to mark an entity to be removed at the end of the update loop."
-    MarkForDelete)
-
   (define-instance (Component (MapStore Position) Position))
   (define-instance (Component (MapStore Velocity) Velocity))
+  (define-instance (Component (MapStore MaxVelocity) MaxVelocity))
+  (define-instance (Component (MapStore Acceleration) Acceleration))
   (define-instance (Component (MapStore Size) Size))
   (define-instance (Component (MapStore Angle) Angle))
-  (define-instance (Component (MapStore MarkForDelete) MarkForDelete))
+  )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;             Systems               ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (define-struct PhysicsConfig
+    (max-velocity (Optional Single-Float)))
+
+  (declare update-physics ((HasGetSetMembers :w :m (MapStore Position) Position)
+                           (HasGetSet :w :m (MapStore Velocity) Velocity)
+                           (HasGet :w :m (MapStore Acceleration) Acceleration)
+                           (HasGet :w :m (MapStore MaxVelocity) MaxVelocity)
+                           => SystemT :w :m Unit))
+  (define update-physics
+    "Updates all position/velocity/acceration components.
+Use the optional MaxVelocity component to limit entities' speed."
+    (cmap
+     (fn ((Tuple4 (Position p) (Velocity v) (Acceleration a) max-v?))
+       (let new-v =
+         (match (map get-max-vel max-v?)
+           ((None)
+            (v+ v a))
+           ((Some max-v)
+            (v-clamp max-v (v+ v a)))))
+       (let new-p = (v+ p new-v))
+       (Tuple (Position new-p) (Velocity new-v)))))
   )

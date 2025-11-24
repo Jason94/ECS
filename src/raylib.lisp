@@ -441,6 +441,8 @@
                             (HasGet :w :m (MapStore Angle) Angle)
                             => SystemT :w :m Unit))
   (define draw-all-shapes
+    "Draw all entities that have a DrawShape and a Position. Shapes will
+be rotated by the Angle component, if the entity has one."
     (do-cforeach (Tuple3 s (Position p) ang?)
       (draw-shape p (map get-angle ang?) s)))
   )

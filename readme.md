@@ -1,20 +1,20 @@
 # ECS
 _An Entity-Component-System framework for Coalton game development_
 
+ECS is a port of the excellent [Haskell Apecs library](https://github.com/jonascarpay/apecs).
+
 ```lisp
-  (declare destroy-collissions (System_ Unit))
-  (define destroy-collissions
-    (do
-     (etys-to-remove <- (mut:new-var Nil))
-     (do-cforeach (Tuple3 (Asteroid) ety1 (Position p1))
-       (do-cforeach (Tuple3 (Bullet) ety2 (Position p2))
-         (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
-           increment-score
-           (mut:modify etys-to-remove (Cons ety1))
-           (mut:modify etys-to-remove (Cons ety2)))))
-      (etys-to-remove <- (mut:read etys-to-remove))
-      (do-foreach (ety etys-to-remove)
-        (remove-entity ety))))
+  (declare update-physics ((HasGetSetMembers :w :m (MapStore Position) Position)
+                           (HasGetSet :w :m (MapStore Velocity) Velocity)
+                           (HasGet :w :m (MapStore Acceleration) Acceleration)
+                           => SystemT :w :m Unit))
+  (define update-physics
+    "Updates all position/velocity/acceration components."
+    (cmap
+     (fn ((Tuple3 (Position p) (Velocity v) (Acceleration a)))
+       (let new-v = (v+ v a))
+       (let new-p = (v+ p new-v))
+       (Tuple (Position new-p) (Velocity new-v)))))
 ```
 
 ![Asteroids Example Screenshot](/git/asteroids.png?raw=true "Asteroids Screenshot")

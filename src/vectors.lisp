@@ -18,6 +18,7 @@
    #:v*
    #:v-rot
    #:v-length
+   #:v-clamp
    #:v-distance
   ))
 
@@ -80,6 +81,14 @@
   (define (v-length vec)
     (lisp Single-Float (vec)
       (v:vlength vec)))
+
+  (declare v-clamp (Single-Float -> Vector2 -> Vector2))
+  (define (v-clamp max-len vec)
+    "Shorten VEC to MAX-LEN if it is longer."
+    (let len = (v-length vec))
+    (if (> len max-len)
+        (v* vec (/ max-len len))
+        vec))
 
   (inline)
   (declare v-distance (Vector2 -> Vector2 -> Single-Float))
