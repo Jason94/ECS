@@ -29,6 +29,13 @@
    ;;;
    ;;; Raylib Wrapper
    ;;;
+   #:RlRectangle
+   #:rl-rect
+   #:rl-r-x
+   #:rl-r-y
+   #:rl-r-w
+   #:rl-r-h
+
    #:Color
    #:color
 
@@ -63,10 +70,17 @@
    #:draw-triangle-lines
    #:draw-triangle-v
    #:draw-triangle-lines-v
+   #:draw-rectangle
+   #:draw-rectangle-lines
+   #:draw-rectangle-v
+   #:draw-rectangle-lines-v
+   #:draw-rectangle-rec
 
    #:check-collision-circles
    #:check-collision-circle-line
    #:check-collision-lines
+   #:check-collision-rects
+   #:check-collision-circle-rec
 
    ;;;
    ;;; ECS Integration
@@ -74,6 +88,7 @@
    #:Shape
    #:Circle
    #:Triangle
+   #:Rectangle
    #:shapes-collide?
 
    #:DrawMode
@@ -93,6 +108,41 @@
 
 (in-package :ecs/raylib)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;              Misc                 ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (repr :native rl::rectangle)
+  (define-type RlRectangle
+    "FFI rectangle type, used comprehensively by Raylib.")
+
+  (declare rl-rect (Single-Float -> Single-Float -> Single-Float -> Single-Float -> RlRectangle))
+  (define (rl-rect x y w h)
+    (lisp RlRectangle (x y w h)
+      (rl:make-rectangle :x x :y y :width w :height h)))
+
+  (declare rl-r-x (RlRectangle -> Single-Float))
+  (define (rl-r-x r)
+    (lisp Single-Float (r)
+      (rl:rectangle-x r)))
+
+  (declare rl-r-y (RlRectangle -> Single-Float))
+  (define (rl-r-y r)
+    (lisp Single-Float (r)
+      (rl:rectangle-y r)))
+
+  (declare rl-r-w (RlRectangle -> Single-Float))
+  (define (rl-r-w r)
+    (lisp Single-Float (r)
+      (rl:rectangle-width r)))
+
+  (declare rl-r-h (RlRectangle -> Single-Float))
+  (define (rl-r-h r)
+    (lisp Single-Float (r)
+      (rl:rectangle-height r)))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;             Colors                ;;;
@@ -325,6 +375,42 @@
       (lisp :a (v1_ v2_ v3_ color)
         (rl:draw-triangle-lines v1_ v2_ v3_ color))
       Unit))
+
+  (declare draw-rectangle (MonadIo :m
+                           => Single-Float -> Single-Float -> Single-Float -> Single-Float -> Color
+                           -> :m Unit))
+  (define (draw-rectangle x y width height color)
+    (wrap-io
+      (lisp :a (x y width height color)
+        (rl:draw-rectangle x y width height color))
+      Unit))
+
+  (declare draw-rectangle-lines (MonadIo :m
+                                 => Single-Float -> Single-Float -> Single-Float -> Single-Float -> Color
+                                 -> :m Unit))
+  (define (draw-rectangle-lines x y width height color)
+    (wrap-io
+      (lisp :a (x y width height color)
+        (rl:draw-rectangle-lines x y width height color))
+      Unit))
+
+  (declare draw-rectangle-v (MonadIo :m => Vector2 -> Vector2 -> Color -> :m Unit))
+  (define (draw-rectangle-v pos size color)
+    (wrap-io
+      (lisp :a (pos size color)
+        (rl:draw-rectangle-v pos size color))
+      Unit))
+
+  (declare draw-rectangle-lines-v (MonadIo :m => Vector2 -> Vector2 -> Color -> :m Unit))
+  (define (draw-rectangle-lines-v pos size color)
+    (draw-rectangle-lines (vx pos) (vy pos) (vx size) (vy size) color))
+
+  (declare draw-rectangle-rec (MonadIo :m => RlRectangle -> Color -> :m Unit))
+  (define (draw-rectangle-rec rec color)
+    "Draw a color filled rectangle."
+    (wrap-io
+      (lisp :a (rec color)
+        (rl:draw-rectangle-rec rec color))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -348,6 +434,16 @@
     "Check if the line from P11 to P22 intersects with the line from P21 to P22."
     (lisp Boolean (p11 p12 p21 p22)
       (rl:check-collision-lines p11 p12 p21 p22 (cffi:null-pointer))))
+
+  (declare check-collision-rects (RlRectangle -> RlRectangle -> Boolean))
+  (define (check-collision-rects rec1 rec2)
+    (lisp Boolean (rec1 rec2)
+      (rl:check-collision-recs rec1 rec2)))
+
+  (declare check-collision-circle-rec (Vector2 -> Single-Float -> RlRectangle -> Boolean))
+  (define (check-collision-circle-rec pos1 r1 rec2)
+    (lisp Boolean (pos1 r1 rec2)
+      (rl:check-collision-circle-rec pos1 r1 rec2)))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -356,8 +452,12 @@
 
 (coalton-toplevel
   (define-type Shape
+   ;; Circle r
    (Circle Single-Float)
-   (Triangle Vector2 Vector2 Vector2))
+   ;; Triangle p1 p2 p3
+   (Triangle Vector2 Vector2 Vector2)
+   ;; Rectangle width height
+   (Rectangle Single-Float Single-Float))
 
   (declare translate-triangle (Vector2 -> Vector2 -> Vector2 -> Vector2
                                -> Tuple3 Vector2 Vector2 Vector2))
@@ -369,6 +469,52 @@
     (or (check-collision-circle-line pos1 r1 v1 v2)
         (check-collision-circle-line pos1 r1 v2 v3)
         (check-collision-circle-line pos1 r1 v1 v3)))
+
+  (declare check-rect-line (Vector2 -> Single-Float -> Single-Float
+                            -> Vector2 -> Vector2 -> Boolean))
+  (define (check-rect-line pos1 w1 h1 v21 v22)
+    "Check if a rectangle at pos1 with w1 and h1 intersects line from v21 to v22."
+    (let x11 = (vx pos1))
+    (let x12 = (+ x11 w1))
+    (let y11 = (vy pos1))
+    (let y12 = (+ y11 h1))
+    (let top-l = pos1)
+    (let bot-l = (vec2 x11 y12))
+    (let top-r = (vec2 x12 y11))
+    (let bot-r = (vec2 x12 y12))
+    (or (check-collision-lines top-l bot-l v21 v22)
+        (check-collision-lines top-l top-r v21 v22)
+        (check-collision-lines bot-r bot-l v21 v22)
+        (check-collision-lines bot-r top-r v21 v22)))
+
+  (declare check-rec-triangle
+           (Vector2 -> Single-Float -> Single-Float
+            -> Vector2 -> Vector2 -> Vector2 -> Boolean))
+  (define (check-rec-triangle pos1 w1 h1 v1 v2 v3)
+    "Check if a rectangle at pos1 with w1 and h1 intersects triangle with vertices v1, v2, v3."
+    (let x11 = (vx pos1))
+    (let x12 = (+ x11 w1))
+    (let y11 = (vy pos1))
+    (let y12 = (+ y11 h1))
+    (let top-l = pos1)
+    (let bot-l = (vec2 x11 y12))
+    (let top-r = (vec2 x12 y11))
+    (let bot-r = (vec2 x12 y12))
+    (or
+      (check-collision-lines top-l bot-l v1 v2)
+      (check-collision-lines top-l top-r v1 v2)
+      (check-collision-lines bot-r bot-l v1 v2)
+      (check-collision-lines bot-r top-r v1 v2)
+
+      (check-collision-lines top-l bot-l v2 v3)
+      (check-collision-lines top-l top-r v2 v3)
+      (check-collision-lines bot-r bot-l v2 v3)
+      (check-collision-lines bot-r top-r v2 v3)
+
+      (check-collision-lines top-l bot-l v1 v3)
+      (check-collision-lines top-l top-r v1 v3)
+      (check-collision-lines bot-r bot-l v1 v3)
+      (check-collision-lines bot-r top-r v1 v3)))
 
   (declare shapes-collide? (Vector2 -> Shape -> Vector2 -> Shape -> Boolean))
   (define (shapes-collide? pos1 s1 pos2 s2)
@@ -392,7 +538,19 @@
            (check-collision-lines v11 v13 v22 v23)
            (check-collision-lines v11 v12 v21 v23)
            (check-collision-lines v11 v13 v21 v23)
-           (check-collision-lines v12 v13 v21 v23)))))
+           (check-collision-lines v12 v13 v21 v23)))
+      ((Tuple (Circle r1) (Rectangle w2 h2))
+       (check-collision-circle-rec pos1 r1 (rl-rect (vx pos2) (vy pos2) w2 h2)))
+      ((Tuple (Rectangle w1 h1) (Circle r2))
+       (check-collision-circle-rec pos2 r2 (rl-rect (vx pos1) (vy pos1) w1 h1)))
+      ((Tuple (Triangle v11 v12 v13) (Rectangle w2 h2))
+       (check-rec-triangle pos2 w2 h2 v11 v12 v13))
+      ((Tuple (Rectangle w1 h1) (Triangle v21 v22 v23))
+       (check-rec-triangle pos1 w1 h1 v21 v22 v23))
+      ((Tuple (Rectangle w1 h1) (Rectangle w2 h2))
+       (check-collision-rects
+        (rl-rect (vx pos1) (vy pos1) w1 h1)
+        (rl-rect (vx pos2) (vy pos2) w2 h2)))))
   )
 
 (coalton-toplevel
@@ -430,7 +588,12 @@
           (let v3_ = (v-rot ang v3))
           (if (== mode Fill)
               (draw-triangle-v pos v1_ v2_ v3_ color)
-              (draw-triangle-lines-v pos v1_ v2_ v3_ color)))))
+              (draw-triangle-lines-v pos v1_ v2_ v3_ color)))
+         ((Rectangle w h)
+          (let size = (vec2 w h))
+          (if (== mode Fill)
+              (draw-rectangle-v pos size color)
+              (draw-rectangle-lines-v pos size color)))))
       ((CompositeShape shapes)
        (foreach shapes (draw-shape pos ang?)))
       ))
