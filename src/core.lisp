@@ -126,7 +126,17 @@
   (define-class (Component :storage :c (:storage -> :c) (:c -> :storage))
     "A component that can be a property of an entity.")
 
-  (define-class (Elem :s :c (:s -> :c)))
+  (declare comp-prox (Component :s :c => :s -> t:Proxy :c))
+  (define comp-prox (const t:Proxy))
+
+  (declare comp-prox-for (Component :s :c => t:Proxy :s -> t:Proxy :c))
+  (define comp-prox-for (const t:Proxy))
+
+  (declare store-prox (Component :s :c => :c -> t:Proxy :s))
+  (define store-prox (const t:Proxy))
+
+  (declare store-prox-for (Component :s :c => t:Proxy :c -> t:Proxy :s))
+  (define store-prox-for (const t:Proxy))
 
   (repr :enum)
   (define-type EntityStore
@@ -156,7 +166,7 @@
   (define-class ((Monad :m) (Component :s :c) => ExplGet :m :s :c (:s -> :c))
     "Stores that components can be read from."
     (expl-get (:s -> EntityId -> :m :c))
-    (expl-exists? (:s -> EntityId -> t:Proxy :c -> :m Boolean)))
+    (expl-exists? (:s -> EntityId -> :m Boolean)))
 
   (define-class ((Monad :m) (Component :s :c) => ExplSet :m :s :c (:s -> :c))
     "Stores that components can be written to."
@@ -165,7 +175,7 @@
   (define-class ((Monad :m) (Component :s :c) => ExplMembers :m :s :c (:s -> :c))
     "Stores that contain a list of member entities."
     ;; TODO: Optimize the return type.
-    (expl-members (:s -> t:Proxy :c -> :m (List Entity))))
+    (expl-members (:s -> :m (List Entity))))
 
   (define-class ((Monad :m) (Component :s :c) => ExplDestroy :m :s :c (:s -> :c))
     "Stores that components can be removed from."
@@ -214,8 +224,9 @@
     "Check if ETY has a given component."
     (do
      (let id = (entity-id ety))
-     (s <- (get-store))
-     (lift (expl-exists? s id comp-prx))))
+     (let s-prx = (store-prox-for comp-prx))
+     (s <- (t:as-proxy-of (get-store) (proxy-outer s-prx)))
+     (lift (expl-exists? s id))))
 
   (declare get? (HasGet :w :m :s :c => Entity -> SystemT :w :m (Optional :c)))
   (define (get? ety)
@@ -232,8 +243,9 @@
                      => t:Proxy :c -> SystemT :w :m (List Entity)))
   (define (members_ comp-prx)
     (do
-     (s <- (get-store))
-     (lift (expl-members s comp-prx))))
+     (let s-prx = (store-prox-for comp-prx))
+     (s <- (t:as-proxy-of (get-store) (proxy-outer s-prx)))
+     (lift (expl-members s))))
 
   (declare set ((Has :w :m :s :c) (ExplSet :m :s :c)
                 => Entity -> :c -> SystemT :w :m Unit))
@@ -391,8 +403,6 @@
     "A placeholder entity used for getting global components."
     (Entity% 0))
 
-  (define-instance (Elem (Global :c) :c))
-
   (define-instance ((Monoid :c) (MonadIoVar :m) => ExplInit :m (Global :c))
     (define expl-init
       (map Global%
@@ -404,7 +414,7 @@
     (define (expl-get (Global% var) _)
       (m:read var))
     (inline)
-    (define (expl-exists? _ _ _)
+    (define (expl-exists?  _ _)
       (pure True)))
 
   (define-instance ((MonadIoVar :m) (Component (Global :c) :c)
@@ -424,8 +434,6 @@
     "A store that contains one or zero components."
     (Unique% (m:Var (Optional (Tuple EntityId :c)))))
 
-  (define-instance (Elem (Unique :c) :c))
-
   (define-instance (MonadIoVar :m => ExplInit :m (Unique :c))
     (define expl-init
       (map Unique%
@@ -443,7 +451,7 @@
          ((None)
           (error "Reading non-existent unique component.")))))
     (inline)
-    (define (expl-exists? (Unique% var) id _)
+    (define (expl-exists? (Unique% var) id)
       (do
        (comp? <- (m:read var))
        (match comp?
@@ -463,7 +471,7 @@
   (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
                     => ExplMembers :m (Unique :c) :c)
     (inline)
-    (define (expl-members (Unique% var) _)
+    (define (expl-members (Unique% var))
       (do
        (c? <- (m:read var))
        (match c?
@@ -490,8 +498,6 @@
   (define-type (MapStore :c)
     (MapStore% (m:Var (hm:HashMap EntityId :c))))
 
-  (define-instance (Elem (MapStore :c) :c))
-
   (define-instance (MonadIoVar :m => ExplInit :m (MapStore :c))
     (define expl-init
       (map MapStore%
@@ -510,7 +516,7 @@
           ((None)
            (error "Looking up non-existent component.")))))
     (inline)
-    (define (expl-exists? (MapStore% var) id _)
+    (define (expl-exists? (MapStore% var) id)
       (do
        (map <- (m:read var))
        (let comp? = (hm:lookup map id))
@@ -528,7 +534,7 @@
   (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
                     => ExplMembers :m (MapStore :c) :c)
     (inline)
-    (define (expl-members (MapStore% var) _)
+    (define (expl-members (MapStore% var))
       (do
        (m <- (m:read var))
        (pure (map Entity% (it:collect! (hm:keys m)))))))
@@ -604,15 +610,11 @@
 
   )
 
-;;;
-;;; Tuple Instances
-;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;               Tuple               ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (coalton-toplevel
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;               Tuple               ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (define-instance ((Component :s1 :c1) (Component :s2 :c2)
                     => Component (Tuple :s1 :s2) (Tuple :c1 :c2)))
@@ -623,10 +625,10 @@
     (define (expl-get (Tuple s1 s2) ety-id)
       (liftA2 Tuple (expl-get s1 ety-id) (expl-get s2 ety-id)))
     (inline)
-    (define (expl-exists? (Tuple s1 s2) ety-id prx-c1c2)
+    (define (expl-exists? (Tuple s1 s2) ety-id)
       (liftA2 (fn (a b) (and a b))
-              (expl-exists? s1 ety-id (as-proxy-of-tup1 prx-c1c2))
-              (expl-exists? s2 ety-id (as-proxy-of-tup2 prx-c1c2)))))
+              (expl-exists? s1 ety-id)
+              (expl-exists? s2 ety-id))))
 
   (define-instance ((ExplSet :m :s1 :c1) (ExplSet :m :s2 :c2)
                     => ExplSet :m (Tuple :s1 :s2) (Tuple :c1 :c2))
@@ -639,16 +641,14 @@
   (define-instance ((ExplMembers :m :s1 :c1) (ExplGet :m :s2 :c2)
                     => ExplMembers :m (Tuple :s1 :s2) (Tuple :c1 :c2))
     (inline)
-    (define (expl-members (Tuple s1 s2) c1c2-prox)
+    (define (expl-members (Tuple s1 s2))
       ;; TODO: This can probably be optimized... Check Haskell U.filterM
       ;; Also fused.
-      (let prx-c1 = (as-proxy-of-tup1 c1c2-prox))
-      (let prx-c2 = (as-proxy-of-tup2 c1c2-prox))
       (do
-       (members1 <- (expl-members s1 prx-c1))
+       (members1 <- (expl-members s1))
        (members2 <- (filterM
                      (fn (ent)
-                       (expl-exists? s2 (entity-id ent) prx-c2))
+                       (expl-exists? s2 (entity-id ent)))
                      members1))
        (pure members2))))
 
@@ -670,10 +670,13 @@
        (s1 <- (get-store))
        (s2 <- (get-store))
        (pure (Tuple s1 s2)))))
+  )
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;               Tuple3              ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;               Tuple3              ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
 
   (define-instance ((Component :s1 :c1) (Component :s2 :c2) (Component :s3 :c3)
                     => Component (Tuple3 :s1 :s2 :s3) (Tuple3 :c1 :c2 :c3)))
@@ -691,11 +694,11 @@
               (expl-get s2 ety-id)
               (expl-get s3 ety-id)))
     (inline)
-    (define (expl-exists? (Tuple3 s1 s2 s3) ety-id prx-c1c2c3)
+    (define (expl-exists? (Tuple3 s1 s2 s3) ety-id)
       (liftAn (fn (a b c) (and a (and b c)))
-              (expl-exists? s1 ety-id (as-proxy-of-tup31 prx-c1c2c3))
-              (expl-exists? s2 ety-id (as-proxy-of-tup32 prx-c1c2c3))
-              (expl-exists? s3 ety-id (as-proxy-of-tup33 prx-c1c2c3)))))
+              (expl-exists? s1 ety-id)
+              (expl-exists? s2 ety-id)
+              (expl-exists? s3 ety-id))))
 
   (define-instance ((ExplSet :m :s1 :c1)
                     (ExplSet :m :s2 :c2)
@@ -716,25 +719,20 @@
                     (Tuple3 :s1 :s2 :s3)
                     (Tuple3 :c1 :c2 :c3))
     (inline)
-    (define (expl-members (Tuple3 s1 s2 s3) c1c2c3-prox)
+    (define (expl-members (Tuple3 s1 s2 s3))
       ;; TODO: This can probably be optimized... Check Haskell U.filterM
       ;; Also fused.
-      (let prx-c1 = (as-proxy-of-tup31 c1c2c3-prox))
-      (let prx-c2 = (as-proxy-of-tup32 c1c2c3-prox))
-      (let prx-c3 = (as-proxy-of-tup33 c1c2c3-prox))
       (do
-       (members1 <- (expl-members s1 prx-c1))
+       (members1 <- (expl-members s1))
        (members2 <- (filterM (fn (ent)
                                (expl-exists?
                                 s2
-                                (entity-id ent)
-                                prx-c2))
+                                (entity-id ent)))
                              members1))
        (members3 <- (filterM (fn (ent)
                                (expl-exists?
                                 s3
-                                (entity-id ent)
-                                prx-c3))
+                                (entity-id ent)))
                              members2))
        (pure members3))))
 
@@ -764,10 +762,13 @@
        (s2 <- (get-store))
         (s3 <- (get-store))
         (pure (Tuple3 s1 s2 s3)))))
+  )
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;;               Tuple4              ;;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;               Tuple4              ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
 
   (define-instance ((Component :s1 :c1) (Component :s2 :c2)
                     (Component :s3 :c3) (Component :s4 :c4)
@@ -790,12 +791,12 @@
               (expl-get s3 ety-id)
               (expl-get s4 ety-id)))
     (inline)
-    (define (expl-exists? (Tuple4 s1 s2 s3 s4) ety-id prx-c1c2c3c4)
+    (define (expl-exists? (Tuple4 s1 s2 s3 s4) ety-id)
       (liftAn (fn (a b c d) (and a (and b (and c d))))
-              (expl-exists? s1 ety-id (as-proxy-of-tup41 prx-c1c2c3c4))
-              (expl-exists? s2 ety-id (as-proxy-of-tup42 prx-c1c2c3c4))
-              (expl-exists? s3 ety-id (as-proxy-of-tup43 prx-c1c2c3c4))
-              (expl-exists? s4 ety-id (as-proxy-of-tup44 prx-c1c2c3c4)))))
+              (expl-exists? s1 ety-id)
+              (expl-exists? s2 ety-id)
+              (expl-exists? s3 ety-id)
+              (expl-exists? s4 ety-id))))
 
   (define-instance ((ExplSet :m :s1 :c1)
                     (ExplSet :m :s2 :c2)
@@ -819,32 +820,25 @@
                     (Tuple4 :s1 :s2 :s3 :s4)
                     (Tuple4 :c1 :c2 :c3 :c4))
     (inline)
-    (define (expl-members (Tuple4 s1 s2 s3 s4) c1c2c3c4-prox)
+    (define (expl-members (Tuple4 s1 s2 s3 s4))
       ;; TODO: This can probably be optimized... Check Haskell U.filterM
       ;; Also fused.
-      (let prx-c1 = (as-proxy-of-tup41 c1c2c3c4-prox))
-      (let prx-c2 = (as-proxy-of-tup42 c1c2c3c4-prox))
-      (let prx-c3 = (as-proxy-of-tup43 c1c2c3c4-prox))
-      (let prx-c4 = (as-proxy-of-tup44 c1c2c3c4-prox))
       (do
-       (members1 <- (expl-members s1 prx-c1))
+       (members1 <- (expl-members s1))
        (members2 <- (filterM (fn (ent)
                                (expl-exists?
                                 s2
-                                (entity-id ent)
-                                prx-c2))
+                                (entity-id ent)))
                              members1))
        (members3 <- (filterM (fn (ent)
                                (expl-exists?
                                 s3
-                                (entity-id ent)
-                                prx-c3))
+                                (entity-id ent)))
                              members2))
        (members4 <- (filterM (fn (ent)
                                (expl-exists?
                                 s4
-                                (entity-id ent)
-                                prx-c4))
+                                (entity-id ent)))
                              members3))
        (pure members4))))
 
@@ -908,15 +902,14 @@ delete a component using Some and None, respectively."
     (inline)
     (define (expl-get (OptionalStore s) ety-id)
       (do
-       (let c-prx = t:Proxy)
-       (e? <- (expl-exists? s ety-id c-prx))
+       (e? <- (expl-exists? s ety-id))
        (if e?
            (do
             (c <- (expl-get s ety-id))
-            (pure (Some (t:as-proxy-of c c-prx))))
+            (pure (Some c)))
            (pure None))))
     (inline)
-    (define (expl-exists? _ _ _)
+    (define (expl-exists? _ _)
       (pure True)))
 
   (define-instance ((ExplSet :m :s :c) (ExplDestroy :m :s :c) =>

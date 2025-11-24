@@ -20,6 +20,7 @@
    #:list-to-tup
    #:list-to-tup4
 
+   #:proxy-outer
    #:proxy-of-arg
    #:proxy-of-arg2
 
@@ -129,6 +130,10 @@
   (liftAn_ f rest))
 
 (coalton-toplevel
+
+  (declare proxy-outer (t:Proxy :a -> t:Proxy (:m :a)))
+  (define (proxy-outer _)
+    t:Proxy)
 
   (declare proxy-of-arg ((:a -> :b) -> t:Proxy :a))
   (define (proxy-of-arg _)
