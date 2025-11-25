@@ -79,6 +79,7 @@
    #:cfold
    #:cquery
    #:cquery#
+   #:cquery-or
    #:collect
 
    #:Global
@@ -402,6 +403,19 @@ store. The primary use-case is to retrieve entities that have a
 component stored in a Unique store, along with other components on that entity.
 Errors if nothing matches."
     (map (opt:from-some "Could not find matching entity.") (cquery f)))
+
+  (declare cquery-or (HasGetMembers :w :m :s :c => :a -> (:c -> Optional :a) -> SystemT :w :m :a))
+  (define (cquery-or def f)
+    "Return the first component that matches the given test/processing
+function. Order of the first entity returned depends on the underlying
+store. The primary use-case is to retrieve entities that have a
+component stored in a Unique store, along with other components on that entity.
+Returns DEF if nothing matches."
+    (matchM (cquery f)
+      ((None)
+       (pure def))
+      ((Some res)
+       (pure res))))
 
   (declare collect ((MonadIoVar :m) (HasGetMembers :w :m :s :c) =>
                     (:c -> Optional :a) -> SystemT :w :m (List :a)))
