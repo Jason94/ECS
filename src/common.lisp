@@ -139,11 +139,11 @@ Use the optional MaxVelocity component to limit entities' speed."
 that knows how to update based on elapsed time."
     (calculate
      "Previously elapsed time (since animation start) -> Result"
-     (:a -> Single-Float -> :t)))
+     (:a -> Double-Float -> :t)))
 
   (repr :transparent)
   (define-type AnimationDiscrete
-    (AnimationDiscrete (Single-Float -> Integer)))
+    (AnimationDiscrete (Double-Float -> Integer)))
 
   (define-instance (Animated AnimationDiscrete Integer)
     (inline)
@@ -152,16 +152,16 @@ that knows how to update based on elapsed time."
 
   (repr :transparent)
   (define-type Animation1D
-    (Animation1D (Single-Float -> Single-Float)))
+    (Animation1D (Double-Float -> Double-Float)))
 
-  (define-instance (Animated Animation1D Single-Float)
+  (define-instance (Animated Animation1D Double-Float)
     (inline)
     (define (calculate (Animation1D f))
       f))
 
   (repr :transparent)
   (define-type Animation2D
-    (Animation2D (Single-Float -> Vector2)))
+    (Animation2D (Double-Float -> Vector2)))
 
   (define-instance (Animated Animation2D Vector2)
     (inline)
@@ -174,7 +174,7 @@ that knows how to update based on elapsed time."
 components with the same animation type."
     (animation :a)
     (value :t)
-    (elapsed-time Single-Float))
+    (elapsed-time Double-Float))
 
   (define-class (Animation :a :c (:c -> :a)))
 
@@ -184,7 +184,7 @@ components with the same animation type."
     t:Proxy)
 
   (define-type-alias (CAnimDiscrete :c) (AnimationComponent AnimationDiscrete Integer :c))
-  (define-type-alias (CAnim1D :c) (AnimationComponent Animation1D Single-Float :c))
+  (define-type-alias (CAnim1D :c) (AnimationComponent Animation1D Double-Float :c))
   (define-type-alias (CAnim2D :c) (AnimationComponent Animation2D Vector2 :c))
 
   (declare new-animation (Animated :a :t => :a -> AnimationComponent :a :t :c))
@@ -192,11 +192,11 @@ components with the same animation type."
     "Construct a new animation starting at t = 0."
     (AnimationComponent
      anim
-     (calculate anim 0.0)
-     0.0))
+     (calculate anim 0.0d0)
+     0.0d0))
 
   (declare update-animation (Animated :a :t
-                             => Single-Float -> AnimationComponent :a :t :c
+                             => Double-Float -> AnimationComponent :a :t :c
                              -> AnimationComponent :a :t :c))
   (define (update-animation delta-time anim-comp)
     "Update the internal elapsed time and calculate the new value for an animation component."
@@ -214,7 +214,7 @@ components with the same animation type."
 
 (coalton-toplevel
 
-  (declare linear-back-and-forth-2d (Vector2 -> Vector2 -> Single-Float -> Animation2D))
+  (declare linear-back-and-forth-2d (Vector2 -> Vector2 -> Double-Float -> Animation2D))
   (define (linear-back-and-forth-2d v-start v-end tot-time)
     "An animation that goes from V-START to V-END in TOT-TIME, then back
 from V-END to V-START in TOT-TIME, then repeats."
@@ -223,11 +223,11 @@ from V-END to V-START in TOT-TIME, then repeats."
        (let norm-time = (mod elapsed-time (* 2 tot-time)))
        (if (< norm-time tot-time)
            (progn
-             (let prop = (/ norm-time tot-time))
+             (let prop = (to-single (/ norm-time tot-time)))
              (v+ v-start
                  (v* (v- v-end v-start) prop)))
            (progn
-             (let prop = (/ (- norm-time tot-time) tot-time))
+             (let prop = (to-single (/ (- norm-time tot-time) tot-time)))
              (v+ v-end
                  (v* (v- v-start v-end) prop)))))))
 

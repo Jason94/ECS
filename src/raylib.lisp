@@ -937,7 +937,7 @@ be rotated by the Angle component, if the entity has one."
      (delta-time <- get-frame-time)
      (let anim-cmp-prox = (animation-component-prox anim-prox))
      (let f-prx = (proxy-from-ret_ anim-cmp-prox))
-     (let f = (t:as-proxy-of (update-animation delta-time) f-prx))
+     (let f = (t:as-proxy-of (update-animation (to-double delta-time)) f-prx))
      (cmap f)))
   )
 

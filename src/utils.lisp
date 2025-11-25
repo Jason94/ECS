@@ -12,6 +12,8 @@
   (:export
    #:to-ufix
    #:to-float
+   #:to-double
+   #:to-single
    #:clamp
    #:contains?
    #:contains-where?
@@ -61,6 +63,16 @@
   (define (to-float x)
     (lisp Single-Float (x)
       (cl:float x)))
+
+  (declare to-double (Single-Float -> Double-Float))
+  (define (to-double x)
+    (lisp Double-Float (x)
+      (cl:coerce x 'cl:double-float)))
+
+  (declare to-single (Double-Float -> Single-Float))
+  (define (to-single x)
+    (lisp Single-Float (x)
+      (cl:coerce x 'cl:single-float)))
 
   (declare clamp (Ord :n => :n -> :n -> :n -> :n))
   (define (clamp min-val max-val x)
