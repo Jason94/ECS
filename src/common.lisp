@@ -34,6 +34,8 @@
    #:CAnim2D
    #:new-animation
    #:update-animation
+
+   #:linear-back-and-forth-2d
    )
   )
 
@@ -132,16 +134,16 @@ Use the optional MaxVelocity component to limit entities' speed."
 
 (coalton-toplevel
 
-  (define-class (Animated :a :t (:a -> :t))
+  (define-class (Animated :a :t (:a -> :t) (:t -> :a))
     "An Animation is a function of time with some result type :t,
-that knows how to update based on delta time."
+that knows how to update based on elapsed time."
     (calculate
-     "Delta time -> Previously elapsed time (since animation start) -> Result"
-     (:a -> Single-Float -> Single-Float -> :t)))
+     "Previously elapsed time (since animation start) -> Result"
+     (:a -> Single-Float -> :t)))
 
   (repr :transparent)
   (define-type AnimationDiscrete
-    (AnimationDiscrete (Single-Float -> Single-Float -> Integer)))
+    (AnimationDiscrete (Single-Float -> Integer)))
 
   (define-instance (Animated AnimationDiscrete Integer)
     (inline)
@@ -150,7 +152,7 @@ that knows how to update based on delta time."
 
   (repr :transparent)
   (define-type Animation1D
-    (Animation1D (Single-Float -> Single-Float -> Single-Float)))
+    (Animation1D (Single-Float -> Single-Float)))
 
   (define-instance (Animated Animation1D Single-Float)
     (inline)
@@ -159,7 +161,7 @@ that knows how to update based on delta time."
 
   (repr :transparent)
   (define-type Animation2D
-    (Animation2D (Single-Float -> Single-Float -> Vector2)))
+    (Animation2D (Single-Float -> Vector2)))
 
   (define-instance (Animated Animation2D Vector2)
     (inline)
@@ -189,7 +191,7 @@ components with the same animation type."
     "Construct a new animation starting at t = 0."
     (AnimationComponent
      anim
-     (calculate anim 0.0 0.0)
+     (calculate anim 0.0)
      0.0))
 
   (declare update-animation (Animated :a :t
@@ -197,8 +199,8 @@ components with the same animation type."
                                   -> AnimationComponent :a :t :c))
   (define (update-animation delta-time anim-comp)
     "Update the internal elapsed time and calculate the new value for an animation component."
-    (let new-val = (calculate (.animation anim-comp) delta-time (.elapsed-time anim-comp)))
     (let new-elapsed-time = (+ (.elapsed-time anim-comp) delta-time))
+    (let new-val = (calculate (.animation anim-comp) new-elapsed-time))
     (AnimationComponent
      (.animation anim-comp)
      new-val
@@ -216,7 +218,16 @@ components with the same animation type."
     "An animation that goes from V-START to V-END in TOT-TIME, then back
 from V-END to V-START in TOT-TIME, then repeats."
     (Animation2D
-     (fn (elapsed-time delta-time))
-
+     (fn (elapsed-time)
+       (let norm-time = (mod elapsed-time (* 2 tot-time)))
+       (if (< norm-time tot-time)
+           (progn
+             (let prop = (/ norm-time tot-time))
+             (v+ v-start
+                 (v* (v- v-end v-start) prop)))
+           (progn
+             (let prop = (/ (- norm-time tot-time) tot-time))
+             (v+ v-end
+                 (v* (v- v-start v-end) prop)))))))
 
   )
