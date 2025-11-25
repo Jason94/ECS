@@ -24,6 +24,7 @@
    (:l   #:coalton-library/list)
    (:opt #:coalton-library/optional)
    (:rl  #:raylib)
+   (:t #:coalton-library/types)
    )
   (:export
    ;;;
@@ -138,6 +139,9 @@
    #:BoundingShapeStore
    #:CompositeBounding
    #:check-collision
+
+   #:update-animations_
+   #:update-animations
    ))
 
 (in-package :ecs/raylib)
@@ -919,3 +923,22 @@ be rotated by the Angle component, if the entity has one."
       ((Tuple (BoundingShape s1) (BoundingShape s2))
        (shapes-collide? pos1 s1 pos2 s2))))
   )
+
+(coalton-toplevel
+  ;; TODO: For some reason the type declaration breaks this,
+  ;; but it does seem to be inferring the correct type.
+  ;; (declare update-animations_ ((MonadIo :m)
+  ;;                              (Animation :a :t :c)
+  ;;                              (HasGetSetMembers :w :m :s (AnimationComponent :a :t :c))
+  ;;                              => t:Proxy :c -> SystemT :w :m Unit))
+  (define (update-animations_ anim-prox)
+    (do
+     (delta-time <- get-frame-time)
+     (let anim-cmp-prox = (animation-component-prox anim-prox))
+     (let f-prx = (proxy-from-ret_ anim-cmp-prox))
+     (let f = (t:as-proxy-of (update-animation delta-time) f-prx))
+     (cmap f)))
+  )
+
+(cl:defmacro update-animations (type)
+  `(update-animations (as (t:Proxy ,type) t:Proxy)))

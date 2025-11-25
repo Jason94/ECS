@@ -22,7 +22,9 @@
 
    #:proxy-outer
    #:proxy-of-arg
+   #:proxy-of-arg_
    #:proxy-of-arg2
+   #:proxy-from-ret_
 
    #:as-proxy-of-tup1
    #:as-proxy-of-tup2
@@ -141,8 +143,16 @@
   (define (proxy-outer _)
     t:Proxy)
 
+  (declare proxy-from-ret_ (t:Proxy :a -> t:Proxy (:b -> :a)))
+  (define (proxy-from-ret_ _)
+    t:Proxy)
+
   (declare proxy-of-arg ((:a -> :b) -> t:Proxy :a))
   (define (proxy-of-arg _)
+    t:Proxy)
+
+  (declare proxy-of-arg_ (t:Proxy (:a -> :b) -> t:Proxy :a))
+  (define (proxy-of-arg_ _)
     t:Proxy)
 
   (declare proxy-of-arg2 ((:a -> :b -> :c) -> t:Proxy :b))
