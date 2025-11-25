@@ -310,9 +310,9 @@
 
   (declare increment-score (System_ Unit))
   (define increment-score
-    (do
-     ((Score s) <- (get global-ent))
-     (set global-ent (Score (+ s 1)))))
+    (modify global-ent
+            (fn ((Score s))
+              (Score (+ s 1)))))
 
   (declare draw-score (System_ Unit))
   (define draw-score
