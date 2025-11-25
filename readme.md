@@ -4,10 +4,7 @@ _An Entity-Component-System framework for Coalton game development_
 ECS is a port of the excellent [Haskell Apecs library](https://github.com/jonascarpay/apecs).
 
 ```lisp
-  (declare update-physics ((HasGetSetMembers :w :m (MapStore Position) Position)
-                           (HasGetSet :w :m (MapStore Velocity) Velocity)
-                           (HasGet :w :m (MapStore Acceleration) Acceleration)
-                           => SystemT :w :m Unit))
+  (declare update-physics (System_ Unit))
   (define update-physics
     "Updates all position/velocity/acceration components."
     (cmap
