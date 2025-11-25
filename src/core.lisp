@@ -76,6 +76,9 @@
    #:do-cflatmap
    #:cforeach
    #:do-cforeach
+   #:cfold
+   #:cquery
+   #:collect
 
    #:Global
    #:global-ent
@@ -349,6 +352,61 @@
        (let ety-id = (entity-id ety))
        (a <- (lift (expl-get sa ety-id)))
        (m-op a))))
+
+  ;; TODO: Rewrite without internal mutation
+  (declare cfold ((MonadIoVar :m) (HasGetMembers :w :m :s :c)
+                  => (:a -> :c -> :a) -> :a -> SystemT :w :m :a))
+  (define (cfold f init-val)
+    "Fold over the game world."
+    (do
+     (let c-prx = (proxy-of-arg2 f))
+     (let s-prx = (store-prox-for c-prx))
+     (s <- (t:as-proxy-of (get-store) (proxy-outer s-prx)))
+     (mems <- (lift (expl-members s)))
+     (result <- (m:new-var init-val))
+     (do-foreach (ety mems)
+       (curr-val <- (m:read result))
+       (ety-c <- (lift (expl-get s (entity-id ety))))
+       (m:write result (f curr-val ety-c)))
+     (m:read result)))
+
+  (declare cquery ((HasGetMembers :w :m :s :c) => (:c -> Optional :a) -> SystemT :w :m (Optional :a)))
+  (define (cquery f)
+    "Return the first component that matches the given test/processing
+function. Order of the first entity returned depends on the underlying
+store. The primary use-case is to retrieve entities that have a
+component stored in a Unique store, along with other components on that entity."
+    (do
+     (let c-prx = (proxy-of-arg f))
+     (let s-prx = (store-prox-for c-prx))
+     (s <- (t:as-proxy-of (get-store) (proxy-outer s-prx)))
+     (mems <- (lift (expl-members s)))
+     (rec % ((rem mems))
+       (do-match rem
+         ((Nil)
+          (pure None))
+         ((Cons ety rest)
+          (c <- (lift (expl-get s (entity-id ety))))
+          (match (f c)
+            ((None)
+             (% rest))
+            ((Some a)
+             (pure (Some a)))))))))
+
+  (declare collect ((MonadIoVar :m) (HasGetMembers :w :m :s :c) =>
+                    (:c -> Optional :a) -> SystemT :w :m (List :a)))
+  (define (collect f)
+    "Collect matching components into a list using the given test and/or
+processing function. You can use this to preprocess data before returning,
+and you can test with multiple components. Pass `Some` to simply collect
+all matching components."
+    (cfold (fn (acc c)
+             (match (f c)
+               ((None)
+                acc)
+               ((Some res)
+                (Cons res acc))))
+           Nil))
   )
 
 (cl:defmacro exists? (ety comp-type)

@@ -80,6 +80,7 @@
    #:draw-rectangle-v
    #:draw-rectangle-lines-v
    #:draw-rectangle-rec
+   #:draw-rectangle-lines-rec
 
    #:Camera2D
    #:make-camera2d
@@ -456,7 +457,7 @@
       Unit))
 
   (declare draw-rectangle-lines (MonadIo :m
-                                 => Single-Float -> Single-Float -> Single-Float -> Single-Float -> Color
+                                 => Integer -> Integer -> Integer -> Integer -> Color
                                  -> :m Unit))
   (define (draw-rectangle-lines x y width height color)
     (wrap-io
@@ -473,14 +474,26 @@
 
   (declare draw-rectangle-lines-v (MonadIo :m => Vector2 -> Vector2 -> Color -> :m Unit))
   (define (draw-rectangle-lines-v pos size color)
-    (draw-rectangle-lines (vx pos) (vy pos) (vx size) (vy size) color))
+    (draw-rectangle-lines (round (vx pos))
+                          (round (vy pos))
+                          (round (vx size))
+                          (round (vy size))
+                          color))
 
   (declare draw-rectangle-rec (MonadIo :m => RlRectangle -> Color -> :m Unit))
   (define (draw-rectangle-rec rec color)
     "Draw a color filled rectangle."
     (wrap-io
       (lisp :a (rec color)
-        (rl:draw-rectangle-rec rec color))))
+        (rl:draw-rectangle-rec rec color))
+      Unit))
+
+  (declare draw-rectangle-lines-rec (MonadIo :m => RlRectangle -> Single-Float -> Color -> :m Unit))
+  (define (draw-rectangle-lines-rec rec line-thickness color)
+    (wrap-io
+      (lisp :a (rec line-thickness color)
+        (rl:draw-rectangle-lines-ex rec line-thickness color))
+      Unit))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
