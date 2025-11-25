@@ -134,7 +134,7 @@ Use the optional MaxVelocity component to limit entities' speed."
 
 (coalton-toplevel
 
-  (define-class (Animated :a :t (:a -> :t) (:t -> :a))
+  (define-class (Animated :a :t (:a -> :t))
     "An Animation is a function of time with some result type :t,
 that knows how to update based on elapsed time."
     (calculate
@@ -176,9 +176,10 @@ components with the same animation type."
     (value :t)
     (elapsed-time Single-Float))
 
-  (define-class (Animated :a :t => Animation :a :t :c (:c -> :a) (:c -> :t)))
+  (define-class (Animation :a :c (:c -> :a)))
 
-  (declare animation-component-prox (Animation :a :t :c => t:Proxy :c -> t:Proxy (AnimationComponent :a :t :c)))
+  (declare animation-component-prox ((Animated :a :t) (Animation :a :c)
+                                     => t:Proxy :c -> t:Proxy (AnimationComponent :a :t :c)))
   (define (animation-component-prox _)
     t:Proxy)
 
@@ -195,8 +196,8 @@ components with the same animation type."
      0.0))
 
   (declare update-animation (Animated :a :t
-                                  => Single-Float -> AnimationComponent :a :t :c
-                                  -> AnimationComponent :a :t :c))
+                             => Single-Float -> AnimationComponent :a :t :c
+                             -> AnimationComponent :a :t :c))
   (define (update-animation delta-time anim-comp)
     "Update the internal elapsed time and calculate the new value for an animation component."
     (let new-elapsed-time = (+ (.elapsed-time anim-comp) delta-time))

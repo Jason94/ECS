@@ -928,7 +928,8 @@ be rotated by the Angle component, if the entity has one."
   ;; TODO: For some reason the type declaration breaks this,
   ;; but it does seem to be inferring the correct type.
   ;; (declare update-animations_ ((MonadIo :m)
-  ;;                              (Animation :a :t :c)
+  ;;                              (Animated :a :t)
+  ;;                              (Animation :a :c)
   ;;                              (HasGetSetMembers :w :m :s (AnimationComponent :a :t :c))
   ;;                              => t:Proxy :c -> SystemT :w :m Unit))
   (define (update-animations_ anim-prox)
@@ -941,4 +942,4 @@ be rotated by the Angle component, if the entity has one."
   )
 
 (cl:defmacro update-animations (type)
-  `(update-animations (as (t:Proxy ,type) t:Proxy)))
+  `(update-animations_ (the (t:Proxy ,type) t:Proxy)))
