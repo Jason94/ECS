@@ -78,6 +78,7 @@
    #:do-cforeach
    #:cfold
    #:cquery
+   #:cquery#
    #:collect
 
    #:Global
@@ -370,7 +371,7 @@
        (m:write result (f curr-val ety-c)))
      (m:read result)))
 
-  (declare cquery ((HasGetMembers :w :m :s :c) => (:c -> Optional :a) -> SystemT :w :m (Optional :a)))
+  (declare cquery (HasGetMembers :w :m :s :c => (:c -> Optional :a) -> SystemT :w :m (Optional :a)))
   (define (cquery f)
     "Return the first component that matches the given test/processing
 function. Order of the first entity returned depends on the underlying
@@ -392,6 +393,15 @@ component stored in a Unique store, along with other components on that entity."
              (% rest))
             ((Some a)
              (pure (Some a)))))))))
+
+  (declare cquery# (HasGetMembers :w :m :s :c => (:c -> Optional :a) -> SystemT :w :m :a))
+  (define (cquery# f)
+    "Return the first component that matches the given test/processing
+function. Order of the first entity returned depends on the underlying
+store. The primary use-case is to retrieve entities that have a
+component stored in a Unique store, along with other components on that entity.
+Errors if nothing matches."
+    (map (opt:from-some "Could not find matching entity.") (cquery f)))
 
   (declare collect ((MonadIoVar :m) (HasGetMembers :w :m :s :c) =>
                     (:c -> Optional :a) -> SystemT :w :m (List :a)))
