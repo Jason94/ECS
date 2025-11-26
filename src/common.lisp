@@ -250,6 +250,7 @@ components with the same animation type."
 
   (declare sqrt-1d Animation1D)
   (define sqrt-1d
+    "Get the square-root of the elapsed time. "
     (Animation1D
      (fn (elapsed-time)
        (sqrt elapsed-time))))
