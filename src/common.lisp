@@ -214,6 +214,15 @@ components with the same animation type."
 
 (coalton-toplevel
 
+  (declare lerp1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (define (lerp1d x-start x-end tot-time)
+    "An animation that goes from X-START to X-END in TOT-TIME, then keeps
+going at the same rate."
+    (Animation1D
+     (fn (elapsed-time)
+       (let prop = (/ elapsed-time tot-time))
+       (+ x-start (* prop (- x-end x-start))))))
+
   (declare linear-back-and-forth-2d (Vector2 -> Vector2 -> Double-Float -> Animation2D))
   (define (linear-back-and-forth-2d v-start v-end tot-time)
     "An animation that goes from V-START to V-END in TOT-TIME, then back
