@@ -35,6 +35,12 @@
    #:new-animation
    #:update-animation
 
+   #:compose-animation-disc
+   #:compose-animation-1d
+   #:compose-animation-2d
+   #:clamp-1d
+   #:sqrt-1d
+   #:lerp-1d
    #:linear-back-and-forth-2d
    )
   )
@@ -214,8 +220,42 @@ components with the same animation type."
 
 (coalton-toplevel
 
-  (declare lerp1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
-  (define (lerp1d x-start x-end tot-time)
+  (declare compose-animation-disc (Animated :a Double-Float => AnimationDiscrete -> :a -> AnimationDiscrete))
+  (define (compose-animation-disc f g)
+    "Return animation calculating f(g(elapsed-time))."
+    (AnimationDiscrete
+     (fn (elapsed-time)
+       (calculate f (calculate g elapsed-time)))))
+
+  (declare compose-animation-1d (Animated :a Double-Float => Animation1D -> :a -> Animation1D))
+  (define (compose-animation-1d f g)
+    "Return animation calculating f(g(elapsed-time))."
+    (Animation1D
+     (fn (elapsed-time)
+       (calculate f (calculate g elapsed-time)))))
+
+  (declare compose-animation-2d (Animated :a Double-Float => Animation2D -> :a -> Animation2D))
+  (define (compose-animation-2d f g)
+    "Return animation calculating f(g(elapsed-time))."
+    (Animation2D
+     (fn (elapsed-time)
+       (calculate f (calculate g elapsed-time)))))
+
+  (declare clamp-1d (Double-Float -> Animation1D))
+  (define (clamp-1d max)
+    "An animation that clamps to MAX."
+    (Animation1D
+     (fn (elapsed-time)
+       (min elapsed-time max))))
+
+  (declare sqrt-1d Animation1D)
+  (define sqrt-1d
+    (Animation1D
+     (fn (elapsed-time)
+       (sqrt elapsed-time))))
+
+  (declare lerp-1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (define (lerp-1d x-start x-end tot-time)
     "An animation that goes from X-START to X-END in TOT-TIME, then keeps
 going at the same rate."
     (Animation1D
