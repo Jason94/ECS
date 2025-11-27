@@ -511,8 +511,17 @@
 
   (declare make-camera2d (Unit -> Camera2D))
   (define (make-camera2d)
-    (lisp Camera2D ()
-      (rl:make-camera2d)))
+    "Make a Camera2D starting at (0,0)."
+    (let offset = (vec2 0.0 0.0))
+    (let target = (vec2 0.0 0.0))
+    (let rotation = 0.0)
+    (let zoom = 1.0)
+    (lisp Camera2D (offset target rotation zoom)
+      (rl:make-camera2d
+       :offset offset
+       :target target
+       :rotation rotation
+       :zoom zoom)))
 
   (declare camera2d-offset_ (Camera2D -> Vector2))
   (define (camera2d-offset_ camera)
