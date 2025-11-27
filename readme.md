@@ -1,7 +1,12 @@
 # ECS
-_An Entity-Component-System framework for Coalton game development_
+_A framework for Coalton game development_
 
-ECS is a port of the excellent [Haskell Apecs library](https://github.com/jonascarpay/apecs).
+ECS is a small game framework for developing games in Coalton. Currently, its two main components are:
+
+* A port of the excellent [Haskell Apecs library](https://github.com/jonascarpay/apecs)
+* A wrapper around the Raylib library for drawing, rendering, input, audio, etc.
+
+ECS is built on coalton-io, so it has full support for threading and shared state between threads.
 
 ```lisp
   (declare update-physics (System_ Unit))
