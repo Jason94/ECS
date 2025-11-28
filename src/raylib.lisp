@@ -23,8 +23,9 @@
    (:sym #:coalton-library/symbol)
    (:l   #:coalton-library/list)
    (:opt #:coalton-library/optional)
-   (:rl  #:raylib)
    (:t #:coalton-library/types)
+   (:rl  #:raylib)
+   (:v #:3d-vectors)
    )
   (:export
    ;;;
@@ -101,6 +102,8 @@
    #:check-collision-lines
    #:check-collision-rects
    #:check-collision-circle-rec
+   #:get-collision-rec
+   #:get-collision-pt
 
    #:get-frame-time
    #:get-time
@@ -620,6 +623,31 @@
   (define (check-collision-circle-rec pos1 r1 rec2)
     (lisp Boolean (pos1 r1 rec2)
       (rl:check-collision-circle-rec pos1 r1 rec2)))
+
+  (declare get-collision-rec (RlRectangle -> RlRectangle -> Optional RlRectangle))
+  (define (get-collision-rec rec1 rec2)
+    (let result =
+      (lisp RlRectangle (rec1 rec2)
+        (rl:get-collision-rec rec1 rec2)))
+    (if (and (== 0.0 (rl-r-w result))
+             (== 0.0 (rl-r-h result)))
+        None
+        (Some result)))
+
+  (declare get-collision-pt (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Optional Vector2))
+  (define (get-collision-pt p11 p12 p21 p22)
+    "Get the point (if any) where the line from P11 to P12 intersects the line
+from P21 to P22."
+    (lisp (Optional Vector2) (p11 p12 p21 p22)
+      (cffi:with-foreign-object (collision '(:struct rl::%vector2))
+        (cl:let ((hit? (rl:check-collision-lines p11 p12 p21 p22 collision)))
+          (cl:if hit?
+                 (call-coalton-function
+                  Some
+                  (cl:let ((x (cffi:mem-aref collision :float 0))
+                           (y (cffi:mem-aref collision :float 1)))
+                    (v:vec x y)))
+                 None)))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
