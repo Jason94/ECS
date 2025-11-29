@@ -10,6 +10,7 @@
    (:opt #:coalton-library/optional)
    (:t #:coalton-library/types))
   (:export
+   #:force-string
    #:to-ufix
    #:to-float
    #:to-double
@@ -54,6 +55,11 @@
 (named-readtables:in-readtable coalton:coalton)
 
 (coalton-toplevel
+  (declare force-string (:a -> String))
+  (define (force-string x)
+    (lisp String (x)
+      (cl:format cl:nil "~a" x)))
+
   (declare to-ufix (Integer -> UFix))
   (define (to-ufix x)
     (lisp UFix (x)

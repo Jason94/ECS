@@ -41,6 +41,9 @@
    #:clamp-1d
    #:sqrt-1d
    #:lerp-1d
+   #:lerp-clamped-1d
+   #:lerp-midpoint-1d
+   #:lerp-midpoint-clamped-1d
    #:linear-back-and-forth-2d
    )
   )
@@ -263,6 +266,42 @@ going at the same rate."
      (fn (elapsed-time)
        (let prop = (/ elapsed-time tot-time))
        (+ x-start (* prop (- x-end x-start))))))
+
+  (declare lerp-clamped-1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (define (lerp-clamped-1d x-start x-end tot-time)
+    "An animation that goes from X-START to X-END in TOT-TIME, then stops at X-END."
+    (Animation1D
+     (fn (elapsed-time)
+       (if (< elapsed-time tot-time)
+           (progn
+             (let prop = (/ elapsed-time tot-time))
+             (+ x-start (* prop (- x-end x-start))))
+           x-end))))
+
+  (declare lerp-midpoint-1d (Double-Float -> Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (define (lerp-midpoint-1d x-start x-end start-val tot-time)
+    "An animation that goes from START-VAL to X-END at the rate it would take to go
+from X-START to X-END in TOT-TIME. Keeps going past X-End at the same rate."
+    (Animation1D
+     (fn (elapsed-time)
+       (let prop = (/ elapsed-time tot-time))
+       (+ start-val (* prop (- x-end x-start))))))
+
+  (declare lerp-midpoint-clamped-1d (Double-Float -> Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (define (lerp-midpoint-clamped-1d x-start x-end start-val tot-time)
+    "An animation that goes from START-VAL to X-END at the rate it would take to go
+from X-START to X-END in TOT-TIME. Stops at X-END."
+    (let clamp-fn =
+      (if (< x-start x-end)
+          min
+          max))
+    (Animation1D
+     (fn (elapsed-time)
+       (clamp-fn
+        x-end
+        (progn
+          (let prop = (/ elapsed-time tot-time))
+          (+ start-val (* prop (- x-end x-start))))))))
 
   (declare linear-back-and-forth-2d (Vector2 -> Vector2 -> Double-Float -> Animation2D))
   (define (linear-back-and-forth-2d v-start v-end tot-time)
