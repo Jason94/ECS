@@ -16,6 +16,7 @@
    #:v+
    #:v-
    #:v*
+   #:v*-comp
    #:v-rot
    #:v-length
    #:v-clamp
@@ -68,6 +69,13 @@
   (define (v* vec c)
     (lisp Vector2 (vec c)
       (v:v* vec c)))
+
+  (inline)
+  (declare v*-comp (Vector2 -> Vector2 -> Vector2))
+  (define (v*-comp veca vecb)
+    "Multiply corresponding components of VECA and VECB."
+    (vec2 (* (vx veca) (vx vecb))
+          (* (vy veca) (vy vecb))))
 
   (inline)
   (declare v-rot (Single-Float -> Vector2 -> Vector2))
