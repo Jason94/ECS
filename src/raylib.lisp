@@ -235,13 +235,13 @@
 
 (coalton-toplevel
 
-  (repr :native rl::texture2d)
+  (repr :native rl::texture)
   (define-type Texture2D)
 
-  (repr :native rl::render-texture2d)
+  (repr :native rl::render-texture)
   (define-type RenderTexture2D)
 
-  (repr :native rl::npatch-info)
+  (repr :native rl::patch-info)
   (define-type NPatchInfo)
 
   (repr :enum)
@@ -277,9 +277,9 @@
   (define-type TextureFilter%)
 
   (declare unwrap-texture-filter (TextureFilter -> TextureFilter%))
-  (define (unwrap-texture-filter filter)
-    (lisp TextureFilter% (filter)
-      (cl:ecase filter
+  (define (unwrap-texture-filter tex-filter)
+    (lisp TextureFilter% (tex-filter)
+      (cl:ecase tex-filter
         (TextureFilter/TextureFilterPoint :point)
         (TextureFilter/TextureFilterBilinear :bilinear)
         (TextureFilter/TextureFilterTrilinear :trilinear)
@@ -310,7 +310,7 @@
   (define (make-npatch-info source left top right bottom layout)
     (let layout% = (unwrap-npatch-layout layout))
     (lisp NPatchInfo (source left top right bottom layout%)
-      (rl:make-npatch-info
+      (rl:make-patch-info
        :source source
        :left left
        :top top
