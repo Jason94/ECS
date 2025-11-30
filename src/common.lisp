@@ -22,7 +22,13 @@
    #:update-physics
 
    #:Animated
+   #:animation
    #:calculate
+   #:f-finished?
+   #:set-f-finished?
+   #:finished-when
+   #:never-finished
+   #:compose-animation
    #:AnimationDiscrete
    #:Animation1D
    #:Animation2D
@@ -32,12 +38,11 @@
    #:CAnimDiscrete
    #:CAnim1D
    #:CAnim2D
-   #:new-animation
+   #:start-animation
    #:update-animation
+   #:clear-animations_
+   #:clear-animations
 
-   #:compose-animation-disc
-   #:compose-animation-1d
-   #:compose-animation-2d
    #:clamp-1d
    #:sqrt-1d
    #:lerp-1d
@@ -146,36 +151,82 @@ Use the optional MaxVelocity component to limit entities' speed."
   (define-class (Animated :a :t (:a -> :t))
     "An Animation is a function of time with some result type :t,
 that knows how to update based on elapsed time."
+    (animation
+     "Create a new animation from elapsed time -> :t, and optionally a finished function."
+     ((Double-Float -> :t) -> Optional (Double-Float -> :t -> Boolean) -> :a))
     (calculate
      "Previously elapsed time (since animation start) -> Result"
-     (:a -> Double-Float -> :t)))
+     (:a -> Double-Float -> :t))
+    (f-finished?
+     "An animation may emit that it is finished."
+     (:a -> Optional (Double-Float -> :t -> Boolean)))
+    (set-f-finished?
+     "Set that an animation is finished when (Elapsed Time -> Value -> Boolean)
+returns True."
+     (Optional (Double-Float -> :t -> Boolean) -> :a -> :a)))
 
-  (repr :transparent)
   (define-type AnimationDiscrete
-    (AnimationDiscrete (Double-Float -> Integer)))
+    (AnimationDiscrete (Double-Float -> Integer)
+                       (Optional (Double-Float -> Integer -> Boolean))))
 
   (define-instance (Animated AnimationDiscrete Integer)
+    (define animation AnimationDiscrete)
     (inline)
-    (define (calculate (AnimationDiscrete f))
-      f))
+    (define (calculate (AnimationDiscrete f _))
+      f)
+    (inline)
+    (define (f-finished? (AnimationDiscrete _ fin?))
+      fin?)
+    (define (set-f-finished? fin? (AnimationDiscrete f _))
+      (AnimationDiscrete f fin?)))
 
-  (repr :transparent)
   (define-type Animation1D
-    (Animation1D (Double-Float -> Double-Float)))
+    (Animation1D (Double-Float -> Double-Float)
+                 (Optional (Double-Float -> Double-Float -> Boolean))))
 
   (define-instance (Animated Animation1D Double-Float)
+    (define animation Animation1D)
     (inline)
-    (define (calculate (Animation1D f))
-      f))
+    (define (calculate (Animation1D f _))
+      f)
+    (inline)
+    (define (f-finished? (Animation1D _ fin?))
+      fin?)
+    (define (set-f-finished? fin? (Animation1D f _))
+      (Animation1D f fin?)))
 
-  (repr :transparent)
   (define-type Animation2D
-    (Animation2D (Double-Float -> Vector2)))
+    (Animation2D (Double-Float -> Vector2)
+                 (Optional (Double-Float -> Vector2 -> Boolean))))
 
   (define-instance (Animated Animation2D Vector2)
+    (define animation Animation2D)
     (inline)
-    (define (calculate (Animation2D f))
-      f))
+    (define (calculate (Animation2D f _))
+      f)
+    (inline)
+    (define (f-finished? (Animation2D _ fin?))
+      fin?)
+    (define (set-f-finished? fin? (Animation2D f _))
+      (Animation2D f fin?)))
+
+  (declare finished? (Animated :a :t => Double-Float -> :t -> :a -> Boolean))
+  (define (finished? elapsed-time val anim)
+    "Check if ANIM is finished at ELAPSED-TIME and VAL."
+    (match (f-finished? anim)
+      ((None) False)
+      ((Some f-fin?) (f-fin? elapsed-time val))))
+
+  (declare finished-when (Animated :a :t => (Double-Float -> :t -> Boolean) -> :a -> :a))
+  (define (finished-when f-finished anim)
+     "Set that an animation is finished when (Elapsed Time -> Value -> Boolean)
+returns True."
+    (set-f-finished? (Some f-finished) anim))
+
+  (declare never-finished (Animated :a :t => :a -> :a))
+  (define (never-finished anim)
+    "Set that an animation will never be finished."
+    (set-f-finished? None anim))
 
   (define-struct (AnimationComponent :a :t :c)
     "An AnimationComponent holds an animation and tracks the total time.
@@ -184,6 +235,18 @@ components with the same animation type."
     (animation :a)
     (value :t)
     (elapsed-time Double-Float))
+
+  (declare compose-animation ((Animated :a1 Double-Float) (Animated :a2 :t2) => :a2 -> :a1 -> :a2))
+  (define (compose-animation f g)
+    "Return animation calculating f(g(elapsed-time)). Is finished when either
+animation is finished."
+    (animation
+     (fn (elapsed-time)
+       (calculate f (calculate g elapsed-time)))
+     (Some
+      (fn (elapsed-time outer-val)
+        (or (finished? elapsed-time outer-val f)
+            (finished? elapsed-time (calculate g elapsed-time) g))))))
 
   (define-class (Animation :a :c (:c -> :a)))
 
@@ -196,8 +259,8 @@ components with the same animation type."
   (define-type-alias (CAnim1D :c) (AnimationComponent Animation1D Double-Float :c))
   (define-type-alias (CAnim2D :c) (AnimationComponent Animation2D Vector2 :c))
 
-  (declare new-animation (Animated :a :t => :a -> AnimationComponent :a :t :c))
-  (define (new-animation anim)
+  (declare start-animation (Animated :a :t => :a -> AnimationComponent :a :t :c))
+  (define (start-animation anim)
     "Construct a new animation starting at t = 0."
     (AnimationComponent
      anim
@@ -215,7 +278,25 @@ components with the same animation type."
      (.animation anim-comp)
      new-val
      new-elapsed-time))
+
+  ;; (declare clear-animations_ ((Animation :a :c)
+  ;;                             (Animated :a :t)
+  ;;                             (Component :s (AnimationComponent :a :t :c))
+  ;;                             (HasGetSetMembers :w :m :s (AnimationComponent :a :t :c))
+  ;;                             => t:Proxy :c -> SystemT :w :m Unit))
+  (define (clear-animations_ anim-prox)
+    "Clear all animations in the given component that are finished."
+    (cmap (fn (anim-cmp)
+            (let anim-cmp-prox = (animation-component-prox anim-prox))
+            (let _ = (t:as-proxy-of anim-cmp anim-cmp-prox))
+            (if (finished? (.elapsed-time anim-cmp) (.value anim-cmp) (.animation anim-cmp))
+                None
+                (Some anim-cmp)))))
   )
+
+(cl:defmacro clear-animations (type)
+  "Clear all animations in the given component that are finished."
+  `(clear-animations_ (the (t:Proxy ,type) t:Proxy)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;        Animation Functions        ;;;
@@ -223,40 +304,21 @@ components with the same animation type."
 
 (coalton-toplevel
 
-  (declare compose-animation-disc (Animated :a Double-Float => AnimationDiscrete -> :a -> AnimationDiscrete))
-  (define (compose-animation-disc f g)
-    "Return animation calculating f(g(elapsed-time))."
-    (AnimationDiscrete
-     (fn (elapsed-time)
-       (calculate f (calculate g elapsed-time)))))
-
-  (declare compose-animation-1d (Animated :a Double-Float => Animation1D -> :a -> Animation1D))
-  (define (compose-animation-1d f g)
-    "Return animation calculating f(g(elapsed-time))."
-    (Animation1D
-     (fn (elapsed-time)
-       (calculate f (calculate g elapsed-time)))))
-
-  (declare compose-animation-2d (Animated :a Double-Float => Animation2D -> :a -> Animation2D))
-  (define (compose-animation-2d f g)
-    "Return animation calculating f(g(elapsed-time))."
-    (Animation2D
-     (fn (elapsed-time)
-       (calculate f (calculate g elapsed-time)))))
-
   (declare clamp-1d (Double-Float -> Animation1D))
   (define (clamp-1d max)
     "An animation that clamps to MAX."
     (Animation1D
      (fn (elapsed-time)
-       (min elapsed-time max))))
+       (min elapsed-time max))
+     None))
 
   (declare sqrt-1d Animation1D)
   (define sqrt-1d
     "Get the square-root of the elapsed time. "
     (Animation1D
      (fn (elapsed-time)
-       (sqrt elapsed-time))))
+       (sqrt elapsed-time))
+     None))
 
   (declare lerp-1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
   (define (lerp-1d x-start x-end tot-time)
@@ -265,7 +327,8 @@ going at the same rate."
     (Animation1D
      (fn (elapsed-time)
        (let prop = (/ elapsed-time tot-time))
-       (+ x-start (* prop (- x-end x-start))))))
+       (+ x-start (* prop (- x-end x-start))))
+     None))
 
   (declare lerp-clamped-1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
   (define (lerp-clamped-1d x-start x-end tot-time)
@@ -276,7 +339,8 @@ going at the same rate."
            (progn
              (let prop = (/ elapsed-time tot-time))
              (+ x-start (* prop (- x-end x-start))))
-           x-end))))
+           x-end))
+     None))
 
   (declare lerp-midpoint-1d (Double-Float -> Double-Float -> Double-Float -> Double-Float -> Animation1D))
   (define (lerp-midpoint-1d x-start x-end start-val tot-time)
@@ -285,7 +349,8 @@ from X-START to X-END in TOT-TIME. Keeps going past X-End at the same rate."
     (Animation1D
      (fn (elapsed-time)
        (let prop = (/ elapsed-time tot-time))
-       (+ start-val (* prop (- x-end x-start))))))
+       (+ start-val (* prop (- x-end x-start))))
+     None))
 
   (declare lerp-midpoint-clamped-1d (Double-Float -> Double-Float -> Double-Float -> Double-Float -> Animation1D))
   (define (lerp-midpoint-clamped-1d x-start x-end start-val tot-time)
@@ -301,7 +366,8 @@ from X-START to X-END in TOT-TIME. Stops at X-END."
         x-end
         (progn
           (let prop = (/ elapsed-time tot-time))
-          (+ start-val (* prop (- x-end x-start))))))))
+          (+ start-val (* prop (- x-end x-start))))))
+     None))
 
   (declare linear-back-and-forth-2d (Vector2 -> Vector2 -> Double-Float -> Animation2D))
   (define (linear-back-and-forth-2d v-start v-end tot-time)
@@ -318,6 +384,7 @@ from V-END to V-START in TOT-TIME, then repeats."
            (progn
              (let prop = (to-single (/ (- norm-time tot-time) tot-time)))
              (v+ v-end
-                 (v* (v- v-start v-end) prop)))))))
+                 (v* (v- v-start v-end) prop)))))
+     None))
 
   )
