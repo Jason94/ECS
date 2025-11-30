@@ -41,6 +41,31 @@
    #:Color
    #:color
 
+   #:Texture2D
+   #:RenderTexture2D
+   #:NPatchInfo
+   #:NPatchLayout
+   #:make-npatch-info
+   #:Image
+   #:TextureFilter
+   #:TextureWrap
+   #:load-texture
+   #:load-texture-from-image
+   #:load-render-texture
+   #:unload-texture
+   #:unload-render-texture
+   #:update-texture
+   #:update-texture-rec
+   #:gen-texture-mipmaps
+   #:set-texture-filter
+   #:set-texture-wrap
+   #:draw-texture
+   #:draw-texture-v
+   #:draw-texture-ex
+   #:draw-texture-rec
+   #:draw-texture-pro
+   #:draw-texture-n-patch
+
    #:WindowConfig
    #:with-window
    #:do-with-window
@@ -203,6 +228,208 @@
 (cl:defmacro color (color-keyword)
   `(lisp Color ()
      ,color-keyword))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;            Textures                 ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (repr :native rl::texture2d)
+  (define-type Texture2D)
+
+  (repr :native rl::render-texture2d)
+  (define-type RenderTexture2D)
+
+  (repr :native rl::npatch-info)
+  (define-type NPatchInfo)
+
+  (repr :enum)
+  (define-type NPatchLayout
+    NPatchLayoutNinePatch
+    NPatchLayoutThreePatchVertical
+    NPatchLayoutThreePatchHorizontal)
+
+  (repr :native cl:symbol)
+  (define-type NPatchLayout%)
+
+  (declare unwrap-npatch-layout (NPatchLayout -> NPatchLayout%))
+  (define (unwrap-npatch-layout layout)
+    (lisp NPatchLayout% (layout)
+      (cl:ecase layout
+        (NPatchLayout/NPatchLayoutNinePatch :nine-patch)
+        (NPatchLayout/NPatchLayoutThreePatchVertical :three-patch-vertical)
+        (NPatchLayout/NPatchLayoutThreePatchHorizontal :three-patch-horizontal))))
+
+  (repr :native rl::image)
+  (define-type Image)
+
+  (repr :enum)
+  (define-type TextureFilter
+    TextureFilterPoint
+    TextureFilterBilinear
+    TextureFilterTrilinear
+    TextureFilterAnisotropic4x
+    TextureFilterAnisotropic8x
+    TextureFilterAnisotropic16x)
+
+  (repr :native cl:symbol)
+  (define-type TextureFilter%)
+
+  (declare unwrap-texture-filter (TextureFilter -> TextureFilter%))
+  (define (unwrap-texture-filter filter)
+    (lisp TextureFilter% (filter)
+      (cl:ecase filter
+        (TextureFilter/TextureFilterPoint :point)
+        (TextureFilter/TextureFilterBilinear :bilinear)
+        (TextureFilter/TextureFilterTrilinear :trilinear)
+        (TextureFilter/TextureFilterAnisotropic4x :anisotropic-4x)
+        (TextureFilter/TextureFilterAnisotropic8x :anisotropic-8x)
+        (TextureFilter/TextureFilterAnisotropic16x :anisotropic-16x))))
+
+  (repr :enum)
+  (define-type TextureWrap
+    TextureWrapRepeat
+    TextureWrapClamp
+    TextureWrapMirrorRepeat
+    TextureWrapMirrorClamp)
+
+  (repr :native cl:symbol)
+  (define-type TextureWrap%)
+
+  (declare unwrap-texture-wrap (TextureWrap -> TextureWrap%))
+  (define (unwrap-texture-wrap wrap)
+    (lisp TextureWrap% (wrap)
+      (cl:ecase wrap
+        (TextureWrap/TextureWrapRepeat :repeat)
+        (TextureWrap/TextureWrapClamp :clamp)
+        (TextureWrap/TextureWrapMirrorRepeat :mirror-repeat)
+        (TextureWrap/TextureWrapMirrorClamp :mirror-clamp))))
+
+  (declare make-npatch-info (RlRectangle -> Integer -> Integer -> Integer -> Integer -> NPatchLayout -> NPatchInfo))
+  (define (make-npatch-info source left top right bottom layout)
+    (let layout% = (unwrap-npatch-layout layout))
+    (lisp NPatchInfo (source left top right bottom layout%)
+      (rl:make-npatch-info
+       :source source
+       :left left
+       :top top
+       :right right
+       :bottom bottom
+       :layout layout%)))
+
+  (declare load-texture ((MonadIo :m) (Into :s String) => :s -> :m Texture2D))
+  (define (load-texture filename)
+    (let path = (as String filename))
+    (wrap-io
+      (lisp Texture2D (path)
+        (rl:load-texture path))))
+
+  (declare load-texture-from-image (MonadIo :m => Image -> :m Texture2D))
+  (define (load-texture-from-image image)
+    (wrap-io
+      (lisp Texture2D (image)
+        (rl:load-texture-from-image image))))
+
+  (declare load-render-texture (MonadIo :m => UFix -> UFix -> :m RenderTexture2D))
+  (define (load-render-texture width height)
+    (wrap-io
+      (lisp RenderTexture2D (width height)
+        (rl:load-render-texture width height))))
+
+  (declare unload-texture (MonadIo :m => Texture2D -> :m Unit))
+  (define (unload-texture texture)
+    (wrap-io
+      (lisp :a (texture)
+        (rl:unload-texture texture))
+      Unit))
+
+  (declare unload-render-texture (MonadIo :m => RenderTexture2D -> :m Unit))
+  (define (unload-render-texture texture)
+    (wrap-io
+      (lisp :a (texture)
+        (rl:unload-render-texture texture))
+      Unit))
+
+  (declare update-texture (MonadIo :m => Texture2D -> :a -> :m Unit))
+  (define (update-texture texture data)
+    (wrap-io
+      (lisp :a (texture data)
+        (rl:update-texture texture data))
+      Unit))
+
+  (declare update-texture-rec (MonadIo :m => Texture2D -> RlRectangle -> :a -> :m Unit))
+  (define (update-texture-rec texture rectangle data)
+    (wrap-io
+      (lisp :a (texture rectangle data)
+        (rl:update-texture-rec texture rectangle data))
+      Unit))
+
+  (declare gen-texture-mipmaps (MonadIo :m => Texture2D -> :m Unit))
+  (define (gen-texture-mipmaps texture)
+    (wrap-io
+      (lisp :a (texture)
+        (rl:gen-texture-mipmaps texture))
+      Unit))
+
+  (declare set-texture-filter (MonadIo :m => Texture2D -> TextureFilter -> :m Unit))
+  (define (set-texture-filter texture filter)
+    (let filter% = (unwrap-texture-filter filter))
+    (wrap-io
+      (lisp :a (texture filter%)
+        (rl:set-texture-filter texture filter%))
+      Unit))
+
+  (declare set-texture-wrap (MonadIo :m => Texture2D -> TextureWrap -> :m Unit))
+  (define (set-texture-wrap texture wrap)
+    (let wrap% = (unwrap-texture-wrap wrap))
+    (wrap-io
+      (lisp :a (texture wrap%)
+        (rl:set-texture-wrap texture wrap%))
+      Unit))
+
+  (declare draw-texture (MonadIo :m => Texture2D -> Integer -> Integer -> Color -> :m Unit))
+  (define (draw-texture texture pos-x pos-y tint)
+    (wrap-io
+      (lisp :a (texture pos-x pos-y tint)
+        (rl:draw-texture texture pos-x pos-y tint))
+      Unit))
+
+  (declare draw-texture-v (MonadIo :m => Texture2D -> Vector2 -> Color -> :m Unit))
+  (define (draw-texture-v texture position tint)
+    (wrap-io
+      (lisp :a (texture position tint)
+        (rl:draw-texture-v texture position tint))
+      Unit))
+
+  (declare draw-texture-ex (MonadIo :m => Texture2D -> Vector2 -> Single-Float -> Single-Float -> Color -> :m Unit))
+  (define (draw-texture-ex texture position rotation scale tint)
+    (wrap-io
+      (lisp :a (texture position rotation scale tint)
+        (rl:draw-texture-ex texture position rotation scale tint))
+      Unit))
+
+  (declare draw-texture-rec (MonadIo :m => Texture2D -> RlRectangle -> Vector2 -> Color -> :m Unit))
+  (define (draw-texture-rec texture source position tint)
+    (wrap-io
+      (lisp :a (texture source position tint)
+        (rl:draw-texture-rec texture source position tint))
+      Unit))
+
+  (declare draw-texture-pro (MonadIo :m => Texture2D -> RlRectangle -> RlRectangle -> Vector2 -> Single-Float -> Color -> :m Unit))
+  (define (draw-texture-pro texture source dest origin rotation tint)
+    (wrap-io
+      (lisp :a (texture source dest origin rotation tint)
+        (rl:draw-texture-pro texture source dest origin rotation tint))
+      Unit))
+
+  (declare draw-texture-n-patch (MonadIo :m => Texture2D -> NPatchInfo -> RlRectangle -> Vector2 -> Single-Float -> Color -> :m Unit))
+  (define (draw-texture-n-patch texture npatch-info dest origin rotation tint)
+    (wrap-io
+      (lisp :a (texture npatch-info dest origin rotation tint)
+        (rl:draw-texture-n-patch texture npatch-info dest origin rotation tint))
+      Unit))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;             Windows               ;;;
