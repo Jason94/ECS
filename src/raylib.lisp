@@ -41,8 +41,8 @@
    #:Color
    #:color
 
-   #:Texture2D
-   #:RenderTexture2D
+   #:Texture
+   #:RenderTexture
    #:NPatchInfo
    #:NPatchLayout
    #:make-npatch-info
@@ -230,16 +230,16 @@
      ,color-keyword))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;            Textures                 ;;;
+;;;            Textures               ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (coalton-toplevel
 
   (repr :native rl::texture)
-  (define-type Texture2D)
+  (define-type Texture)
 
   (repr :native rl::render-texture)
-  (define-type RenderTexture2D)
+  (define-type RenderTexture)
 
   (repr :native rl::patch-info)
   (define-type NPatchInfo)
@@ -318,61 +318,61 @@
        :bottom bottom
        :layout layout%)))
 
-  (declare load-texture ((MonadIo :m) (Into :s String) => :s -> :m Texture2D))
+  (declare load-texture ((MonadIo :m) (Into :s String) => :s -> :m Texture))
   (define (load-texture filename)
     (let path = (as String filename))
     (wrap-io
-      (lisp Texture2D (path)
+      (lisp Texture (path)
         (rl:load-texture path))))
 
-  (declare load-texture-from-image (MonadIo :m => Image -> :m Texture2D))
+  (declare load-texture-from-image (MonadIo :m => Image -> :m Texture))
   (define (load-texture-from-image image)
     (wrap-io
-      (lisp Texture2D (image)
+      (lisp Texture (image)
         (rl:load-texture-from-image image))))
 
-  (declare load-render-texture (MonadIo :m => UFix -> UFix -> :m RenderTexture2D))
+  (declare load-render-texture (MonadIo :m => UFix -> UFix -> :m RenderTexture))
   (define (load-render-texture width height)
     (wrap-io
-      (lisp RenderTexture2D (width height)
+      (lisp RenderTexture (width height)
         (rl:load-render-texture width height))))
 
-  (declare unload-texture (MonadIo :m => Texture2D -> :m Unit))
+  (declare unload-texture (MonadIo :m => Texture -> :m Unit))
   (define (unload-texture texture)
     (wrap-io
       (lisp :a (texture)
         (rl:unload-texture texture))
       Unit))
 
-  (declare unload-render-texture (MonadIo :m => RenderTexture2D -> :m Unit))
+  (declare unload-render-texture (MonadIo :m => RenderTexture -> :m Unit))
   (define (unload-render-texture texture)
     (wrap-io
       (lisp :a (texture)
         (rl:unload-render-texture texture))
       Unit))
 
-  (declare update-texture (MonadIo :m => Texture2D -> :a -> :m Unit))
+  (declare update-texture (MonadIo :m => Texture -> :a -> :m Unit))
   (define (update-texture texture data)
     (wrap-io
       (lisp :a (texture data)
         (rl:update-texture texture data))
       Unit))
 
-  (declare update-texture-rec (MonadIo :m => Texture2D -> RlRectangle -> :a -> :m Unit))
+  (declare update-texture-rec (MonadIo :m => Texture -> RlRectangle -> :a -> :m Unit))
   (define (update-texture-rec texture rectangle data)
     (wrap-io
       (lisp :a (texture rectangle data)
         (rl:update-texture-rec texture rectangle data))
       Unit))
 
-  (declare gen-texture-mipmaps (MonadIo :m => Texture2D -> :m Unit))
+  (declare gen-texture-mipmaps (MonadIo :m => Texture -> :m Unit))
   (define (gen-texture-mipmaps texture)
     (wrap-io
       (lisp :a (texture)
         (rl:gen-texture-mipmaps texture))
       Unit))
 
-  (declare set-texture-filter (MonadIo :m => Texture2D -> TextureFilter -> :m Unit))
+  (declare set-texture-filter (MonadIo :m => Texture -> TextureFilter -> :m Unit))
   (define (set-texture-filter texture filter)
     (let filter% = (unwrap-texture-filter filter))
     (wrap-io
@@ -380,7 +380,7 @@
         (rl:set-texture-filter texture filter%))
       Unit))
 
-  (declare set-texture-wrap (MonadIo :m => Texture2D -> TextureWrap -> :m Unit))
+  (declare set-texture-wrap (MonadIo :m => Texture -> TextureWrap -> :m Unit))
   (define (set-texture-wrap texture wrap)
     (let wrap% = (unwrap-texture-wrap wrap))
     (wrap-io
@@ -388,42 +388,46 @@
         (rl:set-texture-wrap texture wrap%))
       Unit))
 
-  (declare draw-texture (MonadIo :m => Texture2D -> Integer -> Integer -> Color -> :m Unit))
+  (declare draw-texture (MonadIo :m => Texture -> Integer -> Integer -> Color -> :m Unit))
   (define (draw-texture texture pos-x pos-y tint)
     (wrap-io
       (lisp :a (texture pos-x pos-y tint)
         (rl:draw-texture texture pos-x pos-y tint))
       Unit))
 
-  (declare draw-texture-v (MonadIo :m => Texture2D -> Vector2 -> Color -> :m Unit))
+  (declare draw-texture-v (MonadIo :m => Texture -> Vector2 -> Color -> :m Unit))
   (define (draw-texture-v texture position tint)
     (wrap-io
       (lisp :a (texture position tint)
         (rl:draw-texture-v texture position tint))
       Unit))
 
-  (declare draw-texture-ex (MonadIo :m => Texture2D -> Vector2 -> Single-Float -> Single-Float -> Color -> :m Unit))
+  (declare draw-texture-ex (MonadIo :m => Texture -> Vector2 -> Single-Float -> Single-Float -> Color -> :m Unit))
   (define (draw-texture-ex texture position rotation scale tint)
     (wrap-io
       (lisp :a (texture position rotation scale tint)
         (rl:draw-texture-ex texture position rotation scale tint))
       Unit))
 
-  (declare draw-texture-rec (MonadIo :m => Texture2D -> RlRectangle -> Vector2 -> Color -> :m Unit))
+  (declare draw-texture-rec (MonadIo :m => Texture -> RlRectangle -> Vector2 -> Color -> :m Unit))
   (define (draw-texture-rec texture source position tint)
     (wrap-io
       (lisp :a (texture source position tint)
         (rl:draw-texture-rec texture source position tint))
       Unit))
 
-  (declare draw-texture-pro (MonadIo :m => Texture2D -> RlRectangle -> RlRectangle -> Vector2 -> Single-Float -> Color -> :m Unit))
+  (declare draw-texture-pro (MonadIo :m
+                             => Texture -> RlRectangle -> RlRectangle -> Vector2 -> Single-Float -> Color
+                             -> :m Unit))
   (define (draw-texture-pro texture source dest origin rotation tint)
     (wrap-io
       (lisp :a (texture source dest origin rotation tint)
         (rl:draw-texture-pro texture source dest origin rotation tint))
       Unit))
 
-  (declare draw-texture-n-patch (MonadIo :m => Texture2D -> NPatchInfo -> RlRectangle -> Vector2 -> Single-Float -> Color -> :m Unit))
+  (declare draw-texture-n-patch (MonadIo :m
+                                 => Texture -> NPatchInfo -> RlRectangle -> Vector2 -> Single-Float -> Color
+                                 -> :m Unit))
   (define (draw-texture-n-patch texture npatch-info dest origin rotation tint)
     (wrap-io
       (lisp :a (texture npatch-info dest origin rotation tint)
