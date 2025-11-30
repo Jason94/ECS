@@ -44,6 +44,8 @@
    #:color
 
    #:Texture
+   #:texture-width
+   #:texture-height
    #:RenderTexture
    #:NPatchInfo
    #:NPatchLayout
@@ -251,6 +253,16 @@
 
   (repr :native rl::texture)
   (define-type Texture)
+
+  (declare texture-width (Texture -> Integer))
+  (define (texture-width texture)
+    (lisp Integer (texture)
+      (rl:texture-width texture)))
+
+  (declare texture-height (Texture -> Integer))
+  (define (texture-height texture)
+    (lisp Integer (texture)
+      (rl:texture-height texture)))
 
   (repr :native rl::render-texture)
   (define-type RenderTexture)
