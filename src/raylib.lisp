@@ -24,6 +24,8 @@
    (:l   #:coalton-library/list)
    (:opt #:coalton-library/optional)
    (:t #:coalton-library/types)
+   (:hm #:coalton-library/hashmap)
+   (:r #:coalton-library/result)
    (:rl  #:raylib)
    (:v #:3d-vectors)
    )
@@ -148,6 +150,17 @@
    #:with-camera2d
    #:do-with-camera2d
 
+   #:TextureMap
+   #:textureMapStore
+   #:LoadTextureErr
+   #:TextureAlreadyFound
+   #:load-and-store-texture
+   #:load-and-store-texture#
+   #:get-texture
+   #:get-texture#
+   #:unstore-texture
+   #:unstore-all-textures
+
    #:Shape
    #:Circle
    #:Triangle
@@ -159,6 +172,7 @@
    #:Outline
    #:DrawShape
    #:DrawShapeStore
+   #:DrawTexture
    #:CompositeShape
    #:draw-shape
    #:draw-all-shapes
@@ -1003,6 +1017,100 @@ from P21 to P22."
       ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;     ECS Integration - Textures    ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (define-type-alias TextureMap (hm:HashMap String Texture))
+  (define-type-alias TextureMapStore (Global TextureMap))
+  (define-instance (Component TextureMapStore TextureMap))
+
+  (define-type LoadTextureErr
+    (TextureAlreadyFound String))
+
+  (define-instance (Into LoadTextureErr String)
+    (define (into err)
+      (match err
+        ((TextureAlreadyFound key)
+         (build-str "Already loaded texture keyed " key)))))
+
+  (define-instance (Signalable LoadTextureErr)
+    (define (error err)
+      (error
+       (as String err))))
+
+  (declare load-and-store-texture ((MonadIo :m)
+                                   (Into :s String)
+                                   (Into :k String)
+                                   (HasGetSet :w :m TextureMapStore TextureMap)
+                                   => :s -> :k -> SystemT :w :m (Result LoadTextureErr Texture)))
+  (define (load-and-store-texture filename key)
+    "Load texture at FILENAME and store it under KEY."
+    (do
+     (tex-map <- (get global-ent))
+     (let key-str = (as String key))
+     (do-if (opt:some? (hm:lookup tex-map key-str))
+         (pure (Err (TextureAlreadyFound key-str)))
+       (texture <- (load-texture filename))
+       (set global-ent (hm:insert tex-map key-str texture))
+       (pure (Ok texture)))))
+
+  (declare load-and-store-texture# ((MonadIo :m)
+                                    (Into :s String)
+                                    (Into :k String)
+                                    (HasGetSet :w :m TextureMapStore TextureMap)
+                                    => :s -> :k -> SystemT :w :m Texture))
+  (define (load-and-store-texture# filename key)
+    "Load texture at FILENAME and store it under KEY. If a texture already exists,
+raise an error."
+    (map r:ok-or-error (load-and-store-texture filename key)))
+
+  (declare get-texture ((MonadIo :m)
+                        (Into :k String)
+                        (HasGet :w :m TextureMapStore TextureMap)
+                        => :k -> SystemT :w :m (Optional Texture)))
+  (define (get-texture key)
+    "Get the loaded-texture stored under KEY."
+    (do
+     (tex-map <- (get global-ent))
+     (pure (hm:lookup tex-map (as String key)))))
+
+  (declare get-texture# ((MonadIo :m)
+                         (Into :k String)
+                         (HasGet :w :m TextureMapStore TextureMap)
+                         => :k -> SystemT :w :m Texture))
+  (define (get-texture# key)
+    "Get the loaded-texture stored under KEY. Errors if not found."
+    (map (opt:from-some "Could not find texture.") (get-texture key)))
+
+  (declare unstore-texture ((MonadIo :m)
+                            (Into :k String)
+                            (HasGetSet :w :m TextureMapStore TextureMap)
+                            => :k -> SystemT :w :m Unit))
+  (define (unstore-texture key)
+    "Unload texture under KEY and remove it from the texture map."
+    (do
+     (tex-map <- (get global-ent))
+     (let str-key = (as String key))
+     (do-when-val (texture (hm:lookup tex-map str-key))
+       (unload-texture texture)
+       (set global-ent (hm:remove tex-map str-key)))))
+
+  (declare unstore-all-textures ((MonadIo :m)
+                                 (HasGetSet :w :m TextureMapStore TextureMap)
+                                 => SystemT :w :m Unit))
+  (define unstore-all-textures
+    "Unload all textures and unload them."
+    (do
+     (tex-map <- (get global-ent))
+     (let _ = (the TextureMap tex-map))
+     (do-foreach (texture (hm:values tex-map))
+       (unload-texture texture))
+     (set global-ent (the TextureMap hm:empty))))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     ECS Integration - Drawing     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1119,6 +1227,7 @@ from P21 to P22."
 
   (define-type DrawShape
     (DrawShape Shape Color DrawMode)
+    (DrawTexture Texture)
     (CompositeShape (List DrawShape))
     )
 
@@ -1150,6 +1259,8 @@ from P21 to P22."
           (if (== mode Fill)
               (draw-rectangle-v pos size color)
               (draw-rectangle-lines-v pos size color)))))
+      ((DrawTexture texture)
+       (draw-texture-v texture pos (color :white)))
       ((CompositeShape shapes)
        (foreach shapes (draw-shape pos ang?)))
       ))

@@ -35,6 +35,9 @@
    #:run-with
    #:do-run-with
 
+   #:Initializable
+   #:init-empty
+
    #:ExplInit
    #:expl-init
 
@@ -161,6 +164,16 @@
   (define (run-with world sys)
     "Run a system in a game world."
     (ev:run-envT sys world))
+
+  (define-class (Initializable :i)
+    "A type that can be initialized to an 'empty' value, that doesn't have to be a semigroup."
+    (init-empty :i))
+
+  (define-instance (Initializable (List :a))
+    (define init-empty Nil))
+
+  (define-instance (Initializable (hm:HashMap :k :v))
+    (define init-empty hm:empty))
 
   (define-class (Monad :m => ExplInit :m :s)
     "Stores that can be initialized."
@@ -476,10 +489,10 @@ all matching components."
     "A placeholder entity used for getting global components."
     (Entity% 0))
 
-  (define-instance ((Monoid :c) (MonadIoVar :m) => ExplInit :m (Global :c))
+  (define-instance ((Initializable :c) (MonadIoVar :m) => ExplInit :m (Global :c))
     (define expl-init
       (map Global%
-           (m:new-var mempty))))
+           (m:new-var init-empty))))
 
   (define-instance ((MonadIoVar :m) (Component (Global :c) :c)
                     => ExplGet :m (Global :c) :c)
@@ -637,8 +650,8 @@ all matching components."
        (+ a b))))
 
   ;; NOTE: Starts at 1 so that 0 can represent global entities.
-  (define-instance (Monoid EntityCounter)
-    (define mempty (EntityCounter% 1)))
+  (define-instance (Initializable EntityCounter)
+    (define init-empty (EntityCounter% 1)))
 
   (define-instance (Component (Global EntityCounter) EntityCounter))
 

@@ -28,6 +28,7 @@
   (define-world World
     ((Global EntityCounter)
      (MapStore Position)
+     (MapStore Angle)
      (MapStore DrawShape)))
   )
 
@@ -39,7 +40,7 @@
       (new-entity_
        (Tuple
         (Position (vec2 100.0 100.0))
-        (Circle 10.0 (color :maroon))))
+        (DrawShape (Circle 10.0) (color :maroon) Fill)))
       (do-loop-do-while window-should-close
         (do-with-drawing
           (clear-background (color :raywhite))

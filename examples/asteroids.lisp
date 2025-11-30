@@ -95,12 +95,8 @@
     NextLevel
     GameOver)
 
-  (define-instance (SemiGroup GameMode)
-    (define (<> _ _)
-      (error "Don't call <> on GameMode")))
-
-  (define-instance (Monoid GameMode)
-    (define mempty IntroScreen))
+  (define-instance (Initializable GameMode)
+    (define init-empty IntroScreen))
 
   (define-instance (Component (Global GameMode) GameMode))
 
@@ -109,12 +105,8 @@
   (define-type Level
     (Level UFix))
 
-  (define-instance (SemiGroup Level)
-    (define (<> _ _)
-      (error "Don't call <> on Level")))
-
-  (define-instance (Monoid Level)
-    (define mempty (Level initial-level)))
+  (define-instance (Initializable Level)
+    (define init-empty (Level initial-level)))
 
   (define-instance (Component (Global Level) Level))
 
@@ -123,12 +115,8 @@
   (define-type Score
     (Score Integer))
 
-  (define-instance (SemiGroup Score)
-    (define (<> _ _)
-      (error "Don't call <> on Score")))
-
-  (define-instance (Monoid Score)
-    (define mempty (Score 0)))
+  (define-instance (Initializable Score)
+    (define init-empty (Score 0)))
 
   (define-instance (Component (Global Score) Score))
 
