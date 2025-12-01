@@ -1629,17 +1629,17 @@ already been loaded under KEY."
      (pure (hm:lookup sound-map (as String key)))))
 
   (declare get-sound# ((MonadIo :m)
-                         (Into :k String)
-                         (HasGet :w :m SoundMapStore SoundMap)
-                         => :k -> SystemT :w :m Sound))
+                       (Into :k String)
+                       (HasGet :w :m SoundMapStore SoundMap)
+                       => :k -> SystemT :w :m Sound))
   (define (get-sound# key)
     "Get the loaded-sound stored under KEY. Errors if not found."
     (map (opt:from-some "Could not find sound.") (get-sound key)))
 
   (declare unstore-sound ((MonadIo :m)
-                            (Into :k String)
-                            (HasGetSet :w :m SoundMapStore SoundMap)
-                            => :k -> SystemT :w :m Unit))
+                          (Into :k String)
+                          (HasGetSet :w :m SoundMapStore SoundMap)
+                          => :k -> SystemT :w :m Unit))
   (define (unstore-sound key)
     "Unload sound under KEY and remove it from the sound map."
     (do
@@ -1650,8 +1650,8 @@ already been loaded under KEY."
        (set global-ent (hm:remove sound-map str-key)))))
 
   (declare unstore-all-sounds ((MonadIo :m)
-                                 (HasGetSet :w :m SoundMapStore SoundMap)
-                                 => SystemT :w :m Unit))
+                               (HasGetSet :w :m SoundMapStore SoundMap)
+                               => SystemT :w :m Unit))
   (define unstore-all-sounds
     "Unload all sounds and unstore them."
     (do
@@ -1723,17 +1723,17 @@ already been loaded under KEY."
      (pure (hm:lookup music-map (as String key)))))
 
   (declare get-music# ((MonadIo :m)
-                         (Into :k String)
-                         (HasGet :w :m MusicMapStore MusicMap)
-                         => :k -> SystemT :w :m Music))
+                       (Into :k String)
+                       (HasGet :w :m MusicMapStore MusicMap)
+                       => :k -> SystemT :w :m Music))
   (define (get-music# key)
     "Get the loaded-music stored under KEY. Errors if not found."
     (map (opt:from-some "Could not find music.") (get-music key)))
 
   (declare unstore-music ((MonadIo :m)
-                            (Into :k String)
-                            (HasGetSet :w :m MusicMapStore MusicMap)
-                            => :k -> SystemT :w :m Unit))
+                          (Into :k String)
+                          (HasGetSet :w :m MusicMapStore MusicMap)
+                          => :k -> SystemT :w :m Unit))
   (define (unstore-music key)
     "Unload music under KEY and remove it from the music map."
     (do
@@ -1744,8 +1744,8 @@ already been loaded under KEY."
        (set global-ent (hm:remove music-map str-key)))))
 
   (declare unstore-all-music ((MonadIo :m)
-                                 (HasGetSet :w :m MusicMapStore MusicMap)
-                                 => SystemT :w :m Unit))
+                              (HasGetSet :w :m MusicMapStore MusicMap)
+                              => SystemT :w :m Unit))
   (define unstore-all-music
     "Unload all music and unstore them."
     (do
