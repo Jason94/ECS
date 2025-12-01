@@ -137,6 +137,22 @@
    #:get-frame-time
    #:get-time
 
+   #:init-audio-device
+   #:close-audio-device
+   #:audio-device-ready?
+   #:set-master-volume
+   #:get-master-volume
+
+   #:Music
+   #:load-music-stream
+   ;; #:is-music-valid?
+   #:update-music-stream
+   #:unload-music-stream
+   #:play-music-stream
+   #:pause-music-stream
+   #:stop-music-stream
+   #:resume-music-stream
+
    ;;;
    ;;; ECS Integration
    ;;;
@@ -186,6 +202,17 @@
 
    #:update-animations_
    #:update-animations
+
+   #:MusicMap
+   #:MusicMapStore
+   #:LoadMusicErr
+   #:MusicAlreadyFound
+   #:load-and-store-music
+   #:load-and-store-music#
+   #:get-music
+   #:get-music#
+   #:unstore-music
+   #:unstore-all-music
    ))
 
 (in-package :ecs/raylib)
@@ -929,6 +956,116 @@ from P21 to P22."
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;         Audio - General           ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (declare init-audio-device (MonadIo :m => :m Unit))
+  (define init-audio-device
+    (wrap-io
+      (lisp :a ()
+        (rl:init-audio-device))
+      Unit))
+
+  (declare close-audio-device (MonadIo :m => :m Unit))
+  (define close-audio-device
+    (wrap-io
+      (lisp :a ()
+        (rl:close-audio-device))
+      Unit))
+
+  (declare audio-device-ready? (MonadIo :m => :m Boolean))
+  (define audio-device-ready?
+    (wrap-io
+      (lisp Boolean ()
+        (rl:is-audio-device-ready))))
+
+  (declare set-master-volume (MonadIo :m => Single-Float -> :m Unit))
+  (define (set-master-volume volume)
+    (wrap-io
+      (lisp :a (volume)
+        (rl:set-master-volume volume))
+      Unit))
+
+  (declare get-master-volume (MonadIo :m => :m Single-Float))
+  (define get-master-volume
+    (wrap-io
+      (lisp Single-Float ()
+        (rl:get-master-volume))))
+
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;          Audio - Music            ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (repr :native cl:t) ;cl:cons)
+  (define-type Music)
+
+  (declare load-music-stream ((MonadIo :m) (Into :s String) => :s -> :m Music))
+  (define (load-music-stream filename)
+    "Load a music stream from a file."
+    (wrap-io
+      (let filename-str = (as String filename))
+      (lisp Music (filename-str)
+        (rl:load-music-stream filename-str))))
+
+  (declare update-music-stream (MonadIo :m => Music -> :m Unit))
+  (define (update-music-stream music)
+    "Updates buffers for music streaming. Must run every frame!"
+    (wrap-io
+      (lisp :a (music)
+        (rl:update-music-stream music))
+      Unit))
+
+  ;; TODO: Figure this out. Maybe need to patch in the more recent is-music-valid?
+  ;; It's throwing a pointer error.
+  ;; (declare is-music-valid? (Music -> Boolean))
+  ;; (define (is-music-valid? music)
+  ;;   "Check if a music stream is valid (context and buffers initialized)."
+  ;;   (lisp Boolean (music)
+  ;;     (rl:is-music-ready music)))
+
+  (declare unload-music-stream (MonadIo :m => Music -> :m Unit))
+  (define (unload-music-stream music)
+    (wrap-io
+      (lisp :a (music)
+        (rl:unload-music-stream music))
+      Unit))
+
+  (declare play-music-stream (MonadIo :m => Music -> :m Unit))
+  (define (play-music-stream music)
+    (wrap-io
+      (lisp :a (music)
+        (rl:play-music-stream music))
+      Unit))
+
+  (declare stop-music-stream (MonadIo :m => Music -> :m Unit))
+  (define (stop-music-stream music)
+    (wrap-io
+      (lisp :a (music)
+        (rl:stop-music-stream music))
+      Unit))
+
+  (declare pause-music-stream (MonadIo :m => Music -> :m Unit))
+  (define (pause-music-stream music)
+    (wrap-io
+      (lisp :a (music)
+        (rl:pause-music-stream music))
+      Unit))
+
+  (declare resume-music-stream (MonadIo :m => Music -> :m Unit))
+  (define (resume-music-stream music)
+    (wrap-io
+      (lisp :a (music)
+        (rl:resume-music-stream music))
+      Unit))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     ECS Integration - Camera      ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1334,3 +1471,97 @@ be rotated by the Angle component, if the entity has one."
 
 (cl:defmacro update-animations (type)
   `(update-animations_ (the (t:Proxy ,type) t:Proxy)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;      ECS Integration - Music      ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (define-type-alias MusicMap (hm:HashMap String Music))
+  (define-type-alias MusicMapStore (Global MusicMap))
+  (define-instance (Component MusicMapStore MusicMap))
+
+  (define-type LoadMusicErr
+    (MusicAlreadyFound String))
+
+  (define-instance (into LoadMusicErr String)
+    (define (into err)
+      (match err
+        ((MusicAlreadyFound key)
+         (build-str "Already loaded music keyed " key)))))
+
+  (define-instance (Signalable LoadMusicErr)
+    (define (error err)
+      (error
+       (as String err))))
+
+  (declare load-and-store-music ((MonadIo :m)
+                                 (Into :s String)
+                                 (Into :k String)
+                                 (HasGetSet :w :m MusicMapStore MusicMap)
+                                 => :s -> :k -> SystemT :w :m (Result LoadMusicErr Music)))
+  (define (load-and-store-music filename key)
+    "Load music at FILENAME and store it under KEY."
+    (do
+     (music-map <- (get global-ent))
+     (let key-str = (as String key))
+     (do-if (opt:some? (hm:lookup music-map key-str))
+         (pure (Err (MusicAlreadyFound key-str)))
+       (music <- (load-music-stream filename))
+       (set global-ent (hm:insert music-map key-str music))
+       (pure (Ok music)))))
+
+  (declare load-and-store-music# ((MonadIo :m)
+                                  (Into :s String)
+                                  (Into :k String)
+                                  (HasGetSet :w :m MusicMapStore MusicMap)
+                                  => :s -> :k -> SystemT :w :m Music))
+  (define (load-and-store-music# filename key)
+    "Load music at FILENAME and store it under KEY. Raises an error if music has
+already been loaded under KEY."
+    (map r:ok-or-error (load-and-store-music filename key)))
+
+  (declare get-music ((MonadIo :m)
+                      (Into :k String)
+                      (HasGet :w :m MusicMapStore MusicMap)
+                      => :k -> SystemT :w :m (Optional Music)))
+  (define (get-music key)
+    "Get the loaded-music stored under KEY."
+    (do
+     (music-map <- (get global-ent))
+     (pure (hm:lookup music-map (as String key)))))
+
+  (declare get-music# ((MonadIo :m)
+                         (Into :k String)
+                         (HasGet :w :m MusicMapStore MusicMap)
+                         => :k -> SystemT :w :m Music))
+  (define (get-music# key)
+    "Get the loaded-music stored under KEY. Errors if not found."
+    (map (opt:from-some "Could not find music.") (get-music key)))
+
+  (declare unstore-music ((MonadIo :m)
+                            (Into :k String)
+                            (HasGetSet :w :m MusicMapStore MusicMap)
+                            => :k -> SystemT :w :m Unit))
+  (define (unstore-music key)
+    "Unload music under KEY and remove it from the music map."
+    (do
+     (music-map <- (get global-ent))
+     (let str-key = (as String key))
+     (do-when-val (music (hm:lookup music-map str-key))
+       (unload-music-stream music)
+       (set global-ent (hm:remove music-map str-key)))))
+
+  (declare unstore-all-music ((MonadIo :m)
+                                 (HasGetSet :w :m MusicMapStore MusicMap)
+                                 => SystemT :w :m Unit))
+  (define unstore-all-music
+    "Unload all music and unstore them."
+    (do
+     (music-map <- (get global-ent))
+     (let _ = (the MusicMap music-map))
+     (do-foreach (music (hm:values music-map))
+       (unload-music-stream music))
+     (set global-ent (the MusicMap hm:empty))))
+  )
