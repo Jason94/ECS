@@ -143,6 +143,17 @@
    #:set-master-volume
    #:get-master-volume
 
+   #:Sound
+   #:load-sound
+   #:unload-sound
+   #:play-sound
+   #:pause-sound
+   #:stop-sound
+   #:resume-sound
+   #:set-sound-volume
+   #:set-sound-pitch
+   #:set-sound-pan
+
    #:Music
    #:load-music-stream
    ;; #:is-music-valid?
@@ -202,6 +213,17 @@
 
    #:update-animations_
    #:update-animations
+
+   #:SoundMap
+   #:SoundMapStore
+   #:LoadSoundErr
+   #:SoundAlreadyFound
+   #:load-and-store-sound
+   #:load-and-store-sound#
+   #:get-sound
+   #:get-sound#
+   #:unstore-sound
+   #:unstore-all-sounds
 
    #:MusicMap
    #:MusicMapStore
@@ -997,6 +1019,80 @@ from P21 to P22."
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;          Audio - Sound            ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (repr :native cl:t) ;cl:cons)
+  (define-type Sound)
+
+  (declare load-sound ((MonadIo :m) (Into :s String) => :s -> :m Sound))
+  (define (load-sound filename)
+    "Load a sound from file."
+    (wrap-io
+      (let filename-str = (as String filename))
+      (lisp Sound (filename-str)
+        (rl:load-sound filename-str))))
+
+  (declare unload-sound (MonadIo :m => Sound -> :m Unit))
+  (define (unload-sound sound)
+    (wrap-io
+      (lisp :a (sound)
+        (rl:unload-sound sound))
+      Unit))
+
+  (declare play-sound (MonadIo :m => Sound -> :m Unit))
+  (define (play-sound sound)
+    (wrap-io
+      (lisp :a (sound)
+        (rl:play-sound sound))
+      Unit))
+
+  (declare pause-sound (MonadIo :m => Sound -> :m Unit))
+  (define (pause-sound sound)
+    (wrap-io
+      (lisp :a (sound)
+        (rl:pause-sound sound))
+      Unit))
+
+  (declare stop-sound (MonadIo :m => Sound -> :m Unit))
+  (define (stop-sound sound)
+    (wrap-io
+      (lisp :a (sound)
+        (rl:stop-sound sound))
+      Unit))
+
+  (declare resume-sound (MonadIo :m => Sound -> :m Unit))
+  (define (resume-sound sound)
+    (wrap-io
+      (lisp :a (sound)
+        (rl:resume-sound sound))
+      Unit))
+
+  (declare set-sound-volume (MonadIo :m => Sound -> Single-Float -> :m Unit))
+  (define (set-sound-volume sound volume)
+    (wrap-io
+      (lisp :a (sound volume)
+        (rl:set-sound-volume sound volume))
+      Unit))
+
+  (declare set-sound-pitch (MonadIo :m => Sound -> Single-Float -> :m Unit))
+  (define (set-sound-pitch sound pitch)
+    (wrap-io
+      (lisp :a (sound pitch)
+        (rl:set-sound-pitch sound pitch))
+      Unit))
+
+  (declare set-sound-pan (MonadIo :m => Sound -> Single-Float -> :m Unit))
+  (define (set-sound-pan sound pan)
+    (wrap-io
+      (lisp :a (sound pan)
+        (rl:set-sound-pan sound pan))
+      Unit))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;          Audio - Music            ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1473,6 +1569,100 @@ be rotated by the Angle component, if the entity has one."
   `(update-animations_ (the (t:Proxy ,type) t:Proxy)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;      ECS Integration - Sound      ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(coalton-toplevel
+
+  (define-type-alias SoundMap (hm:HashMap String Sound))
+  (define-type-alias SoundMapStore (Global SoundMap))
+  (define-instance (Component SoundMapStore SoundMap))
+
+  (define-type LoadSoundErr
+    (SoundAlreadyFound String))
+
+  (define-instance (into LoadSoundErr String)
+    (define (into err)
+      (match err
+        ((SoundAlreadyFound key)
+         (build-str "Already loaded sound keyed " key)))))
+
+  (define-instance (Signalable LoadSoundErr)
+    (define (error err)
+      (error
+       (as String err))))
+
+  (declare load-and-store-sound ((MonadIo :m)
+                                 (Into :s String)
+                                 (Into :k String)
+                                 (HasGetSet :w :m SoundMapStore SoundMap)
+                                 => :s -> :k -> SystemT :w :m (Result LoadSoundErr Sound)))
+  (define (load-and-store-sound filename key)
+    "Load sound at FILENAME and store it under KEY."
+    (do
+     (sound-map <- (get global-ent))
+     (let key-str = (as String key))
+     (do-if (opt:some? (hm:lookup sound-map key-str))
+         (pure (Err (SoundAlreadyFound key-str)))
+       (sound <- (load-sound filename))
+       (set global-ent (hm:insert sound-map key-str sound))
+       (pure (Ok sound)))))
+
+  (declare load-and-store-sound# ((MonadIo :m)
+                                  (Into :s String)
+                                  (Into :k String)
+                                  (HasGetSet :w :m SoundMapStore SoundMap)
+                                  => :s -> :k -> SystemT :w :m Sound))
+  (define (load-and-store-sound# filename key)
+    "Load sound at FILENAME and store it under KEY. Raises an error if sound has
+already been loaded under KEY."
+    (map r:ok-or-error (load-and-store-sound filename key)))
+
+  (declare get-sound ((MonadIo :m)
+                      (Into :k String)
+                      (HasGet :w :m SoundMapStore SoundMap)
+                      => :k -> SystemT :w :m (Optional Sound)))
+  (define (get-sound key)
+    "Get the loaded-sound stored under KEY."
+    (do
+     (sound-map <- (get global-ent))
+     (pure (hm:lookup sound-map (as String key)))))
+
+  (declare get-sound# ((MonadIo :m)
+                       (Into :k String)
+                       (HasGet :w :m SoundMapStore SoundMap)
+                       => :k -> SystemT :w :m Sound))
+  (define (get-sound# key)
+    "Get the loaded-sound stored under KEY. Errors if not found."
+    (map (opt:from-some "Could not find sound.") (get-sound key)))
+
+  (declare unstore-sound ((MonadIo :m)
+                          (Into :k String)
+                          (HasGetSet :w :m SoundMapStore SoundMap)
+                          => :k -> SystemT :w :m Unit))
+  (define (unstore-sound key)
+    "Unload sound under KEY and remove it from the sound map."
+    (do
+     (sound-map <- (get global-ent))
+     (let str-key = (as String key))
+     (do-when-val (sound (hm:lookup sound-map str-key))
+       (unload-sound sound)
+       (set global-ent (hm:remove sound-map str-key)))))
+
+  (declare unstore-all-sounds ((MonadIo :m)
+                               (HasGetSet :w :m SoundMapStore SoundMap)
+                               => SystemT :w :m Unit))
+  (define unstore-all-sounds
+    "Unload all sounds and unstore them."
+    (do
+     (sound-map <- (get global-ent))
+     (let _ = (the SoundMap sound-map))
+     (do-foreach (sound (hm:values sound-map))
+       (unload-sound sound))
+     (set global-ent (the SoundMap hm:empty))))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;      ECS Integration - Music      ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1533,17 +1723,17 @@ already been loaded under KEY."
      (pure (hm:lookup music-map (as String key)))))
 
   (declare get-music# ((MonadIo :m)
-                         (Into :k String)
-                         (HasGet :w :m MusicMapStore MusicMap)
-                         => :k -> SystemT :w :m Music))
+                       (Into :k String)
+                       (HasGet :w :m MusicMapStore MusicMap)
+                       => :k -> SystemT :w :m Music))
   (define (get-music# key)
     "Get the loaded-music stored under KEY. Errors if not found."
     (map (opt:from-some "Could not find music.") (get-music key)))
 
   (declare unstore-music ((MonadIo :m)
-                            (Into :k String)
-                            (HasGetSet :w :m MusicMapStore MusicMap)
-                            => :k -> SystemT :w :m Unit))
+                          (Into :k String)
+                          (HasGetSet :w :m MusicMapStore MusicMap)
+                          => :k -> SystemT :w :m Unit))
   (define (unstore-music key)
     "Unload music under KEY and remove it from the music map."
     (do
@@ -1554,8 +1744,8 @@ already been loaded under KEY."
        (set global-ent (hm:remove music-map str-key)))))
 
   (declare unstore-all-music ((MonadIo :m)
-                                 (HasGetSet :w :m MusicMapStore MusicMap)
-                                 => SystemT :w :m Unit))
+                              (HasGetSet :w :m MusicMapStore MusicMap)
+                              => SystemT :w :m Unit))
   (define unstore-all-music
     "Unload all music and unstore them."
     (do
