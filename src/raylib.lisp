@@ -249,7 +249,7 @@
   (define-type RlRectangle
     "FFI rectangle type, used comprehensively by Raylib.")
 
-  (declare rl-rect (Single-Float -> Single-Float -> Single-Float -> Single-Float -> RlRectangle))
+  (declare rl-rect (Single-Float * Single-Float * Single-Float * Single-Float -> RlRectangle))
   (define (rl-rect x y w h)
     (lisp (-> RlRectangle) (x y w h)
       (rl:make-rectangle :x x :y y :width w :height h)))
@@ -381,7 +381,7 @@
         (TextureWrap/TextureWrapMirrorRepeat :mirror-repeat)
         (TextureWrap/TextureWrapMirrorClamp :mirror-clamp))))
 
-  (declare make-npatch-info (RlRectangle -> Integer -> Integer -> Integer -> Integer -> NPatchLayout -> NPatchInfo))
+  (declare make-npatch-info (RlRectangle * Integer * Integer * Integer * Integer * NPatchLayout -> NPatchInfo))
   (define (make-npatch-info source left top right bottom layout)
     (let layout% = (unwrap-npatch-layout layout))
     (lisp (-> NPatchInfo) (source left top right bottom layout%)
@@ -406,7 +406,7 @@
       (lisp (-> Texture) (image)
         (rl:load-texture-from-image image))))
 
-  (declare load-render-texture (MonadIo :m => UFix -> UFix -> :m RenderTexture))
+  (declare load-render-texture (MonadIo :m => UFix * UFix -> :m RenderTexture))
   (define (load-render-texture width height)
     (wrap-io
       (lisp (-> RenderTexture) (width height)
@@ -426,14 +426,14 @@
         (rl:unload-render-texture texture))
       Unit))
 
-  (declare update-texture (MonadIo :m => Texture -> :a -> :m Unit))
+  (declare update-texture (MonadIo :m => Texture * :a -> :m Unit))
   (define (update-texture texture data)
     (wrap-io
       (lisp (-> :a) (texture data)
         (rl:update-texture texture data))
       Unit))
 
-  (declare update-texture-rec (MonadIo :m => Texture -> RlRectangle -> :a -> :m Unit))
+  (declare update-texture-rec (MonadIo :m => Texture * RlRectangle * :a -> :m Unit))
   (define (update-texture-rec texture rectangle data)
     (wrap-io
       (lisp (-> :a) (texture rectangle data)
@@ -447,7 +447,7 @@
         (rl:gen-texture-mipmaps texture))
       Unit))
 
-  (declare set-texture-filter (MonadIo :m => Texture -> TextureFilter -> :m Unit))
+  (declare set-texture-filter (MonadIo :m => Texture * TextureFilter -> :m Unit))
   (define (set-texture-filter texture filter)
     (let filter% = (unwrap-texture-filter filter))
     (wrap-io
@@ -455,7 +455,7 @@
         (rl:set-texture-filter texture filter%))
       Unit))
 
-  (declare set-texture-wrap (MonadIo :m => Texture -> TextureWrap -> :m Unit))
+  (declare set-texture-wrap (MonadIo :m => Texture * TextureWrap -> :m Unit))
   (define (set-texture-wrap texture wrap)
     (let wrap% = (unwrap-texture-wrap wrap))
     (wrap-io
@@ -463,28 +463,28 @@
         (rl:set-texture-wrap texture wrap%))
       Unit))
 
-  (declare draw-texture (MonadIo :m => Texture -> Integer -> Integer -> Color -> :m Unit))
+  (declare draw-texture (MonadIo :m => Texture * Integer * Integer * Color -> :m Unit))
   (define (draw-texture texture pos-x pos-y tint)
     (wrap-io
       (lisp (-> :a) (texture pos-x pos-y tint)
         (rl:draw-texture texture pos-x pos-y tint))
       Unit))
 
-  (declare draw-texture-v (MonadIo :m => Texture -> Vector2 -> Color -> :m Unit))
+  (declare draw-texture-v (MonadIo :m => Texture * Vector2 * Color -> :m Unit))
   (define (draw-texture-v texture position tint)
     (wrap-io
       (lisp (-> :a) (texture position tint)
         (rl:draw-texture-v texture position tint))
       Unit))
 
-  (declare draw-texture-ex (MonadIo :m => Texture -> Vector2 -> Single-Float -> Single-Float -> Color -> :m Unit))
+  (declare draw-texture-ex (MonadIo :m => Texture * Vector2 * Single-Float * Single-Float * Color -> :m Unit))
   (define (draw-texture-ex texture position rotation scale tint)
     (wrap-io
       (lisp (-> :a) (texture position rotation scale tint)
         (rl:draw-texture-ex texture position rotation scale tint))
       Unit))
 
-  (declare draw-texture-rec (MonadIo :m => Texture -> RlRectangle -> Vector2 -> Color -> :m Unit))
+  (declare draw-texture-rec (MonadIo :m => Texture * RlRectangle * Vector2 * Color -> :m Unit))
   (define (draw-texture-rec texture source position tint)
     (wrap-io
       (lisp (-> :a) (texture source position tint)
@@ -492,8 +492,7 @@
       Unit))
 
   (declare draw-texture-pro (MonadIo :m
-                             => Texture -> RlRectangle -> RlRectangle -> Vector2 -> Single-Float -> Color
-                             -> :m Unit))
+                             => Texture * RlRectangle * RlRectangle * Vector2 * Single-Float * Color -> :m Unit))
   (define (draw-texture-pro texture source dest origin rotation tint)
     (wrap-io
       (lisp (-> :a) (texture source dest origin rotation tint)
@@ -501,8 +500,7 @@
       Unit))
 
   (declare draw-texture-n-patch (MonadIo :m
-                                 => Texture -> NPatchInfo -> RlRectangle -> Vector2 -> Single-Float -> Color
-                                 -> :m Unit))
+                                 => Texture * NPatchInfo * RlRectangle * Vector2 * Single-Float * Color -> :m Unit))
   (define (draw-texture-n-patch texture npatch-info dest origin rotation tint)
     (wrap-io
       (lisp (-> :a) (texture npatch-info dest origin rotation tint)
@@ -528,7 +526,7 @@
       (lisp (-> Boolean) ()
         (rl:window-should-close))))
 
-  (declare with-window (MonadUnliftIO :m => WindowConfig -> :m :a -> :m Unit))
+  (declare with-window (MonadUnliftIO :m => WindowConfig * :m :a -> :m Unit))
   (define (with-window (WindowConfig w h title fps) m-op)
     (with-run-in-io
       (fn (run)
@@ -676,14 +674,14 @@
 
 (coalton-toplevel
 
-  (declare draw-fps (MonadIo :m => Integer -> Integer -> :m Unit))
+  (declare draw-fps (MonadIo :m => Integer * Integer -> :m Unit))
   (define (draw-fps x y)
     (wrap-io
       (lisp (-> :a) (x y)
         (rl:draw-fps x y))
       Unit))
 
-  (declare draw-text ((MonadIo :m) (Into :s String) => :s -> Integer -> Integer -> Integer -> Color -> :m Unit))
+  (declare draw-text ((MonadIo :m) (Into :s String) => :s * Integer * Integer * Integer * Color -> :m Unit))
   (define (draw-text msg x y font-size color)
     (let str = (as String msg))
     (wrap-io
@@ -698,49 +696,49 @@
 
 (coalton-toplevel
 
-  (declare draw-circle (MonadIo :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle (MonadIo :m => Integer * Integer * Single-Float * Color -> :m Unit))
   (define (draw-circle x y r color)
     (wrap-io
       (lisp (-> :a) (x y r color)
         (rl:draw-circle x y r color))
       Unit))
 
-  (declare draw-circle-v (MonadIo :m => Vector2 -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle-v (MonadIo :m => Vector2 * Single-Float * Color -> :m Unit))
   (define (draw-circle-v pos r color)
     (wrap-io
       (lisp (-> :a) (pos r color)
         (rl:draw-circle-v pos r color))
       Unit))
 
-  (declare draw-circle-lines (MonadIo :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle-lines (MonadIo :m => Integer * Integer * Single-Float * Color -> :m Unit))
   (define (draw-circle-lines x y r color)
     (wrap-io
       (lisp (-> :a) (x y r color)
         (rl:draw-circle-lines x y r color))
       Unit))
 
-  (declare draw-circle-lines-v (MonadIo :m => Vector2 -> Single-Float -> Color -> :m Unit))
+  (declare draw-circle-lines-v (MonadIo :m => Vector2 * Single-Float * Color -> :m Unit))
   (define (draw-circle-lines-v pos r color)
     (wrap-io
       (lisp (-> :a) (pos r color)
         (rl:draw-circle-lines-v pos r color))
       Unit))
 
-  (declare draw-triangle (MonadIo :m => Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (declare draw-triangle (MonadIo :m => Vector2 * Vector2 * Vector2 * Color -> :m Unit))
   (define (draw-triangle v1 v2 v3 color)
     (wrap-io
       (lisp (-> :a) (v1 v2 v3 color)
         (rl:draw-triangle v1 v2 v3 color))
       Unit))
 
-  (declare draw-triangle-lines (MonadIo :m => Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (declare draw-triangle-lines (MonadIo :m => Vector2 * Vector2 * Vector2 * Color -> :m Unit))
   (define (draw-triangle-lines v1 v2 v3 color)
     (wrap-io
       (lisp (-> :a) (v1 v2 v3 color)
         (rl:draw-triangle-lines v1 v2 v3 color))
       Unit))
 
-  (declare draw-triangle-v (MonadIo :m  => Vector2 -> Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (declare draw-triangle-v (MonadIo :m  => Vector2 * Vector2 * Vector2 * Vector2 * Color -> :m Unit))
   (define (draw-triangle-v pos v1 v2 v3 color)
     (wrap-io
       (let v1_ = (v+ pos v1))
@@ -750,7 +748,7 @@
         (rl:draw-triangle v1_ v2_ v3_ color))
       Unit))
 
-  (declare draw-triangle-lines-v (MonadIo :m  => Vector2 -> Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
+  (declare draw-triangle-lines-v (MonadIo :m  => Vector2 * Vector2 * Vector2 * Vector2 * Color -> :m Unit))
   (define (draw-triangle-lines-v pos v1 v2 v3 color)
     (wrap-io
       (let v1_ = (v+ pos v1))
@@ -761,8 +759,7 @@
       Unit))
 
   (declare draw-rectangle (MonadIo :m
-                           => Single-Float -> Single-Float -> Single-Float -> Single-Float -> Color
-                           -> :m Unit))
+                           => Single-Float * Single-Float * Single-Float * Single-Float * Color -> :m Unit))
   (define (draw-rectangle x y width height color)
     (wrap-io
       (lisp (-> :a) (x y width height color)
@@ -770,22 +767,21 @@
       Unit))
 
   (declare draw-rectangle-lines (MonadIo :m
-                                 => Integer -> Integer -> Integer -> Integer -> Color
-                                 -> :m Unit))
+                                 => Integer * Integer * Integer * Integer * Color -> :m Unit))
   (define (draw-rectangle-lines x y width height color)
     (wrap-io
       (lisp (-> :a) (x y width height color)
         (rl:draw-rectangle-lines x y width height color))
       Unit))
 
-  (declare draw-rectangle-v (MonadIo :m => Vector2 -> Vector2 -> Color -> :m Unit))
+  (declare draw-rectangle-v (MonadIo :m => Vector2 * Vector2 * Color -> :m Unit))
   (define (draw-rectangle-v pos size color)
     (wrap-io
       (lisp (-> :a) (pos size color)
         (rl:draw-rectangle-v pos size color))
       Unit))
 
-  (declare draw-rectangle-lines-v (MonadIo :m => Vector2 -> Vector2 -> Color -> :m Unit))
+  (declare draw-rectangle-lines-v (MonadIo :m => Vector2 * Vector2 * Color -> :m Unit))
   (define (draw-rectangle-lines-v pos size color)
     (draw-rectangle-lines (round (vx pos))
                           (round (vy pos))
@@ -793,7 +789,7 @@
                           (round (vy size))
                           color))
 
-  (declare draw-rectangle-rec (MonadIo :m => RlRectangle -> Color -> :m Unit))
+  (declare draw-rectangle-rec (MonadIo :m => RlRectangle * Color -> :m Unit))
   (define (draw-rectangle-rec rec color)
     "Draw a color filled rectangle."
     (wrap-io
@@ -801,7 +797,7 @@
         (rl:draw-rectangle-rec rec color))
       Unit))
 
-  (declare draw-rectangle-lines-rec (MonadIo :m => RlRectangle -> Single-Float -> Color -> :m Unit))
+  (declare draw-rectangle-lines-rec (MonadIo :m => RlRectangle * Single-Float * Color -> :m Unit))
   (define (draw-rectangle-lines-rec rec line-thickness color)
     (wrap-io
       (lisp (-> :a) (rec line-thickness color)
@@ -852,35 +848,35 @@
     (lisp (-> Single-Float) (camera)
       (rl:camera2d-zoom camera)))
 
-  (declare set-camera2d-offset_ (MonadIO :m => Vector2 -> Camera2D -> :m Unit))
+  (declare set-camera2d-offset_ (MonadIO :m => Vector2 * Camera2D -> :m Unit))
   (define (set-camera2d-offset_ offset camera)
     (wrap-io
       (lisp (-> :a) (offset camera)
         (cl:setf (rl:camera2d-offset camera) offset))
       Unit))
 
-  (declare set-camera2d-target_ (MonadIO :m => Vector2 -> Camera2D -> :m Unit))
+  (declare set-camera2d-target_ (MonadIO :m => Vector2 * Camera2D -> :m Unit))
   (define (set-camera2d-target_ target camera)
     (wrap-io
       (lisp (-> :a) (target camera)
         (cl:setf (rl:camera2d-target camera) target))
       Unit))
 
-  (declare set-camera2d-rotation_ (MonadIO :m => Single-Float -> Camera2D -> :m Unit))
+  (declare set-camera2d-rotation_ (MonadIO :m => Single-Float * Camera2D -> :m Unit))
   (define (set-camera2d-rotation_ rotation camera)
     (wrap-io
       (lisp (-> :a) (rotation camera)
         (cl:setf (rl:camera2d-rotation camera) rotation))
       Unit))
 
-  (declare set-camera2d-zoom_ (MonadIO :m => Single-Float -> Camera2D -> :m Unit))
+  (declare set-camera2d-zoom_ (MonadIO :m => Single-Float * Camera2D -> :m Unit))
   (define (set-camera2d-zoom_ zoom camera)
     (wrap-io
       (lisp (-> :a) (zoom camera)
         (cl:setf (rl:camera2d-zoom camera) zoom))
       Unit))
 
-  (declare with-camera2d_ (MonadUnliftIo :m => Camera2D -> :m :a -> :m Unit))
+  (declare with-camera2d_ (MonadUnliftIo :m => Camera2D * :m :a -> :m Unit))
   (define (with-camera2d_ camera m-op)
     "Run M-OP with CAMERA."
     (with-run-in-io
@@ -904,33 +900,33 @@
 
 (coalton-toplevel
 
-  (declare check-collision-circles (Vector2 -> Single-Float -> Vector2 -> Single-Float -> Boolean))
+  (declare check-collision-circles (Vector2 * Single-Float * Vector2 * Single-Float -> Boolean))
   (define (check-collision-circles pos1 r1 pos2 r2)
     (lisp (-> Boolean) (pos1 r1 pos2 r2)
       (rl:check-collision-circles pos1 r1 pos2 r2)))
 
-  (declare check-collision-circle-line (Vector2 -> Single-Float -> Vector2 -> Vector2 -> Boolean))
+  (declare check-collision-circle-line (Vector2 * Single-Float * Vector2 * Vector2 -> Boolean))
   (define (check-collision-circle-line pos1 r1 start2 end2)
     (lisp (-> Boolean) (pos1 r1 start2 end2)
       (rl:check-collision-circle-line pos1 r1 start2 end2)))
 
-  (declare check-collision-lines (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Boolean))
+  (declare check-collision-lines (Vector2 * Vector2 * Vector2 * Vector2 -> Boolean))
   (define (check-collision-lines p11 p12 p21 p22)
     "Check if the line from P11 to P22 intersects with the line from P21 to P22."
     (lisp (-> Boolean) (p11 p12 p21 p22)
       (rl:check-collision-lines p11 p12 p21 p22 (cffi:null-pointer))))
 
-  (declare check-collision-rects (RlRectangle -> RlRectangle -> Boolean))
+  (declare check-collision-rects (RlRectangle * RlRectangle -> Boolean))
   (define (check-collision-rects rec1 rec2)
     (lisp (-> Boolean) (rec1 rec2)
       (rl:check-collision-recs rec1 rec2)))
 
-  (declare check-collision-circle-rec (Vector2 -> Single-Float -> RlRectangle -> Boolean))
+  (declare check-collision-circle-rec (Vector2 * Single-Float * RlRectangle -> Boolean))
   (define (check-collision-circle-rec pos1 r1 rec2)
     (lisp (-> Boolean) (pos1 r1 rec2)
       (rl:check-collision-circle-rec pos1 r1 rec2)))
 
-  (declare get-collision-rec (RlRectangle -> RlRectangle -> Optional RlRectangle))
+  (declare get-collision-rec (RlRectangle * RlRectangle -> Optional RlRectangle))
   (define (get-collision-rec rec1 rec2)
     (let result =
       (lisp (-> RlRectangle) (rec1 rec2)
@@ -940,7 +936,7 @@
         None
         (Some result)))
 
-  (declare get-collision-pt (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Optional Vector2))
+  (declare get-collision-pt (Vector2 * Vector2 * Vector2 * Vector2 -> Optional Vector2))
   (define (get-collision-pt p11 p12 p21 p22)
     "Get the point (if any) where the line from P11 to P12 intersects the line
 from P21 to P22."
@@ -1070,21 +1066,21 @@ from P21 to P22."
         (rl:resume-sound sound))
       Unit))
 
-  (declare set-sound-volume (MonadIo :m => Sound -> Single-Float -> :m Unit))
+  (declare set-sound-volume (MonadIo :m => Sound * Single-Float -> :m Unit))
   (define (set-sound-volume sound volume)
     (wrap-io
       (lisp (-> :a) (sound volume)
         (rl:set-sound-volume sound volume))
       Unit))
 
-  (declare set-sound-pitch (MonadIo :m => Sound -> Single-Float -> :m Unit))
+  (declare set-sound-pitch (MonadIo :m => Sound * Single-Float -> :m Unit))
   (define (set-sound-pitch sound pitch)
     (wrap-io
       (lisp (-> :a) (sound pitch)
         (rl:set-sound-pitch sound pitch))
       Unit))
 
-  (declare set-sound-pan (MonadIo :m => Sound -> Single-Float -> :m Unit))
+  (declare set-sound-pan (MonadIo :m => Sound * Single-Float -> :m Unit))
   (define (set-sound-pan sound pan)
     (wrap-io
       (lisp (-> :a) (sound pan)
@@ -1289,7 +1285,7 @@ from P21 to P22."
                                    (Into :s String)
                                    (Into :k String)
                                    (HasGetSet :w :m TextureMapStore TextureMap)
-                                   => :s -> :k -> SystemT :w :m (Result LoadTextureErr Texture)))
+                                   => :s * :k -> SystemT :w :m (Result LoadTextureErr Texture)))
   (define (load-and-store-texture filename key)
     "Load texture at FILENAME and store it under KEY."
     (do
@@ -1305,7 +1301,7 @@ from P21 to P22."
                                     (Into :s String)
                                     (Into :k String)
                                     (HasGetSet :w :m TextureMapStore TextureMap)
-                                    => :s -> :k -> SystemT :w :m Texture))
+                                    => :s * :k -> SystemT :w :m Texture))
   (define (load-and-store-texture# filename key)
     "Load texture at FILENAME and store it under KEY. If a texture already exists,
 raise an error."
@@ -1368,19 +1364,17 @@ raise an error."
    ;; Rectangle width height
    (Rectangle Single-Float Single-Float))
 
-  (declare translate-triangle (Vector2 -> Vector2 -> Vector2 -> Vector2
-                               -> Tuple3 Vector2 Vector2 Vector2))
+  (declare translate-triangle (Vector2 * Vector2 * Vector2 * Vector2 -> Tuple3 Vector2 Vector2 Vector2))
   (define (translate-triangle pos v1 v2 v3)
     (Tuple3 (v+ pos v1) (v+ pos v2) (v+ pos v3)))
 
-  (declare check-circle-triangle (Vector2 -> Single-Float -> Vector2 -> Vector2 -> Vector2 -> Boolean))
+  (declare check-circle-triangle (Vector2 * Single-Float * Vector2 * Vector2 * Vector2 -> Boolean))
   (define (check-circle-triangle pos1 r1 v1 v2 v3)
     (or (check-collision-circle-line pos1 r1 v1 v2)
         (check-collision-circle-line pos1 r1 v2 v3)
         (check-collision-circle-line pos1 r1 v1 v3)))
 
-  (declare check-rect-line (Vector2 -> Single-Float -> Single-Float
-                            -> Vector2 -> Vector2 -> Boolean))
+  (declare check-rect-line (Vector2 * Single-Float * Single-Float * Vector2 * Vector2 -> Boolean))
   (define (check-rect-line pos1 w1 h1 v21 v22)
     "Check if a rectangle at pos1 with w1 and h1 intersects line from v21 to v22."
     (let x11 = (vx pos1))
@@ -1397,8 +1391,7 @@ raise an error."
         (check-collision-lines bot-r top-r v21 v22)))
 
   (declare check-rec-triangle
-           (Vector2 -> Single-Float -> Single-Float
-            -> Vector2 -> Vector2 -> Vector2 -> Boolean))
+           (Vector2 * Single-Float * Single-Float * Vector2 * Vector2 * Vector2 -> Boolean))
   (define (check-rec-triangle pos1 w1 h1 v1 v2 v3)
     "Check if a rectangle at pos1 with w1 and h1 intersects triangle with vertices v1, v2, v3."
     (let x11 = (vx pos1))
@@ -1425,7 +1418,7 @@ raise an error."
       (check-collision-lines bot-r bot-l v1 v3)
       (check-collision-lines bot-r top-r v1 v3)))
 
-  (declare shapes-collide? (Vector2 -> Shape -> Vector2 -> Shape -> Boolean))
+  (declare shapes-collide? (Vector2 * Shape * Vector2 * Shape -> Boolean))
   (define (shapes-collide? pos1 s1 pos2 s2)
     (match (Tuple s1 s2)
       ((Tuple (Circle r1) (Circle r2))
@@ -1479,7 +1472,7 @@ raise an error."
   (define-type-alias DrawShapeStore (MapStore DrawShape))
   (define-instance (Component DrawShapeStore DrawShape))
 
-  (declare draw-shape (MonadIo :m => Vector2 -> Optional Single-Float -> DrawShape -> :m Unit))
+  (declare draw-shape (MonadIo :m => Vector2 * Optional Single-Float * DrawShape -> :m Unit))
   (define (draw-shape pos ang? ds)
     (match ds
       ((DrawShape s color mode)
@@ -1534,7 +1527,7 @@ be rotated by the Angle component, if the entity has one."
   (define-type-alias BoundingShapeStore (MapStore BoundingShape))
   (define-instance (Component BoundingShapeStore BoundingShape))
 
-  (declare check-collision (Vector2 -> BoundingShape -> Vector2 -> BoundingShape -> Boolean))
+  (declare check-collision (Vector2 * BoundingShape * Vector2 * BoundingShape -> Boolean))
   (define (check-collision pos1 bs1 pos2 bs2)
     (match (Tuple bs1 bs2)
       ((Tuple (CompositeBounding bs1s) _)
@@ -1596,7 +1589,7 @@ be rotated by the Angle component, if the entity has one."
                                  (Into :s String)
                                  (Into :k String)
                                  (HasGetSet :w :m SoundMapStore SoundMap)
-                                 => :s -> :k -> SystemT :w :m (Result LoadSoundErr Sound)))
+                                 => :s * :k -> SystemT :w :m (Result LoadSoundErr Sound)))
   (define (load-and-store-sound filename key)
     "Load sound at FILENAME and store it under KEY."
     (do
@@ -1612,7 +1605,7 @@ be rotated by the Angle component, if the entity has one."
                                   (Into :s String)
                                   (Into :k String)
                                   (HasGetSet :w :m SoundMapStore SoundMap)
-                                  => :s -> :k -> SystemT :w :m Sound))
+                                  => :s * :k -> SystemT :w :m Sound))
   (define (load-and-store-sound# filename key)
     "Load sound at FILENAME and store it under KEY. Raises an error if sound has
 already been loaded under KEY."
@@ -1690,7 +1683,7 @@ already been loaded under KEY."
                                  (Into :s String)
                                  (Into :k String)
                                  (HasGetSet :w :m MusicMapStore MusicMap)
-                                 => :s -> :k -> SystemT :w :m (Result LoadMusicErr Music)))
+                                 => :s * :k -> SystemT :w :m (Result LoadMusicErr Music)))
   (define (load-and-store-music filename key)
     "Load music at FILENAME and store it under KEY."
     (do
@@ -1706,7 +1699,7 @@ already been loaded under KEY."
                                   (Into :s String)
                                   (Into :k String)
                                   (HasGetSet :w :m MusicMapStore MusicMap)
-                                  => :s -> :k -> SystemT :w :m Music))
+                                  => :s * :k -> SystemT :w :m Music))
   (define (load-and-store-music# filename key)
     "Load music at FILENAME and store it under KEY. Raises an error if music has
 already been loaded under KEY."

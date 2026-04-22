@@ -155,12 +155,12 @@
   (define-type-alias (SystemT :w :m :a) (ev:EnvT :w :m :a))
   (define-type-alias (System :w :a) (SystemT :w IO :a))
 
-  (declare run-system (SystemT :w :m :a -> :w -> :m :a))
+  (declare run-system (SystemT :w :m :a * :w -> :m :a))
   (define run-system
     "Run a system in a game world."
     ev:run-envT)
 
-  (declare run-with (:w -> SystemT :w :m :a -> :m :a))
+  (declare run-with (:w * SystemT :w :m :a -> :m :a))
   (define (run-with world sys)
     "Run a system in a game world."
     (ev:run-envT sys world))
@@ -182,12 +182,12 @@
   ;; TODO: Possible to remove proxy here?
   (define-class ((Monad :m) (Component :s :c) => ExplGet :m :s :c (:s -> :c))
     "Stores that components can be read from."
-    (expl-get (:s -> EntityId -> :m :c))
-    (expl-exists? (:s -> EntityId -> :m Boolean)))
+    (expl-get (:s * EntityId -> :m :c))
+    (expl-exists? (:s * EntityId -> :m Boolean)))
 
   (define-class ((Monad :m) (Component :s :c) => ExplSet :m :s :c (:s -> :c))
     "Stores that components can be written to."
-    (expl-set (:s -> EntityId -> :c -> :m Unit)))
+    (expl-set (:s * EntityId * :c -> :m Unit)))
 
   (define-class ((Monad :m) (Component :s :c) => ExplMembers :m :s :c (:s -> :c))
     "Stores that contain a list of member entities."
@@ -196,7 +196,7 @@
 
   (define-class ((Monad :m) (Component :s :c) => ExplDestroy :m :s :c (:s -> :c))
     "Stores that components can be removed from."
-    (expl-remove (:s -> EntityId -> t:Proxy :c -> :m Unit)))
+    (expl-remove (:s * EntityId * t:Proxy :c -> :m Unit)))
 
   ;; TODO: Might be able to either drop Component here or the fundep
   (define-class ((Monad :m) (Component :s :c) => Has :w :m :s :c (:w :c -> :s))
@@ -243,7 +243,7 @@
      (lift (expl-get s id))))
 
   (declare exists?_ ((Has :w :m :s :c) (ExplGet :m :s :c)
-                     => Entity -> t:Proxy :c -> SystemT :w :m Boolean))
+                     => Entity * t:Proxy :c -> SystemT :w :m Boolean))
   (define (exists?_ ety comp-prx)
     "Check if ETY has a given component."
     (do
@@ -252,7 +252,7 @@
      (s <- (t:as-proxy-of (get-store) (proxy-outer s-prx)))
      (lift (expl-exists? s id))))
 
-  (declare expl-get? (ExplGet :m :s :c => :s -> EntityId -> :m (Optional :c)))
+  (declare expl-get? (ExplGet :m :s :c => :s * EntityId -> :m (Optional :c)))
   (define (expl-get? store ety-id)
     (do
      (has-c? <- (expl-exists? store ety-id))
@@ -282,7 +282,7 @@
      (lift (expl-members s))))
 
   (declare set ((Has :w :m :s :c) (ExplSet :m :s :c)
-                => Entity -> :c -> SystemT :w :m Unit))
+                => Entity * :c -> SystemT :w :m Unit))
   (define (set ety comp)
     "Set COMP on ETY."
     (do
@@ -291,7 +291,7 @@
      (lift (expl-set s id comp))))
 
   (declare remove_ ((Has :w :m :s :c) (ExplDestroy :m :s :c)
-                    => Entity -> t:Proxy :c -> SystemT :w :m Unit))
+                    => Entity * t:Proxy :c -> SystemT :w :m Unit))
   (define (remove_ ety comp-prx)
     "Remove COMP from ETY."
     (do
@@ -301,7 +301,7 @@
 
   (declare modify ((Has :w :m :sa :ca) (Has :w :m :sb :cb)
                    (ExplGet :m :sa :ca) (ExplSet :m :sb :cb)
-                   => Entity -> (:ca -> :cb) -> SystemT :w :m Unit))
+                   => Entity * (:ca -> :cb) -> SystemT :w :m Unit))
   (define (modify ety f)
     "Attempt to modify the component on ETY using F, if possible."
     ;; TODO: Get the fused version working, it'll be faster.
@@ -370,7 +370,7 @@
 
   ;; TODO: Rewrite without internal mutation
   (declare cfold ((MonadIoVar :m) (HasGetMembers :w :m :s :c)
-                  => (:a -> :c -> :a) -> :a -> SystemT :w :m :a))
+                  => (:a * :c -> :a) * :a -> SystemT :w :m :a))
   (define (cfold f init-val)
     "Fold over the game world."
     (do
@@ -417,7 +417,7 @@ component stored in a Unique store, along with other components on that entity.
 Errors if nothing matches."
     (map (opt:from-some "Could not find matching entity.") (cquery f)))
 
-  (declare cquery-or (HasGetMembers :w :m :s :c => :a -> (:c -> Optional :a) -> SystemT :w :m :a))
+  (declare cquery-or (HasGetMembers :w :m :s :c => :a * (:c -> Optional :a) -> SystemT :w :m :a))
   (define (cquery-or def f)
     "Return the first component that matches the given test/processing
 function. Order of the first entity returned depends on the underlying

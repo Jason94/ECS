@@ -80,18 +80,18 @@
     (lisp (-> Single-Float) (x)
       (cl:coerce x 'cl:single-float)))
 
-  (declare clamp (Ord :n => :n -> :n -> :n -> :n))
+  (declare clamp (Ord :n => :n * :n * :n -> :n))
   (define (clamp min-val max-val x)
     "Clamp X between MIN-VAL and MAX-VAL (inclusive)."
     (min max-val (max min-val x)))
 
-  (declare contains? (Eq :a => :a -> List :a -> Boolean))
+  (declare contains? (Eq :a => :a * List :a -> Boolean))
   (define (contains? elt lst)
     (match (l:elemindex elt lst)
       ((Some _) True)
       ((None) False)))
 
-  (declare contains-where? ((:a -> Boolean) -> List :a -> Boolean))
+  (declare contains-where? ((:a -> Boolean) * List :a -> Boolean))
   (define (contains-where? f lst)
     (match lst
       ((Nil) False)
@@ -100,7 +100,7 @@
            True
            (contains-where? f rem)))))
 
-  (declare filterM (Applicative :m => (:a -> :m Boolean) -> List :a -> :m (List :a)))
+  (declare filterM (Applicative :m => (:a -> :m Boolean) * List :a -> :m (List :a)))
   (define (filterM m? lst)
     (foldr
      (fn (elt)
@@ -135,7 +135,7 @@
   )
 
 (coalton-toplevel
-  (declare <*> (Applicative :f => :f (:a -> :b) -> :f :a -> :f :b))
+  (declare <*> (Applicative :f => :f (:a -> :b) * :f :a -> :f :b))
   (define <*> (liftA2 id)))
 
 (cl:defun liftAn_ (f rest)
@@ -173,7 +173,7 @@
   (define (proxy-of-arg_ _)
     t:Proxy)
 
-  (declare proxy-of-arg2 ((:a -> :b -> :c) -> t:Proxy :b))
+  (declare proxy-of-arg2 ((:a * :b -> :c) -> t:Proxy :b))
   (define (proxy-of-arg2 _)
     t:Proxy)
 

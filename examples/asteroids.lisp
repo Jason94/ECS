@@ -228,7 +228,7 @@
      (fn ((Tuple (Angle a) (Player)))
        (Angle (+ a x)))))
 
-  (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
+  (declare spawn-bullet (Vector2 * Vector2 -> System_ Unit))
   (define (spawn-bullet pos vel)
     (new-entity_
      (Tuple4
@@ -244,7 +244,7 @@
     (do-cforeach (Tuple3 (Player) (Position p) (Angle a))
       (spawn-bullet p (v-rot a (vec2 0 bullet-speed)))))
 
-  (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
+  (declare spawn-asteroid (Vector2 * Vector2 -> System_ Unit))
   (define (spawn-asteroid pos vel)
     (new-entity_
      (Tuple4
@@ -253,7 +253,7 @@
       (DrawShape asteroid-bounding-circle (color :black) Fill)
       Asteroid)))
 
-  (declare spawn-random-asteroid (Integer -> Integer -> System_ Unit))
+  (declare spawn-random-asteroid (Integer * Integer -> System_ Unit))
   (define (spawn-random-asteroid width height)
     "Spawn an asteroid in a random location inside of WIDTH and HEIGHT."
     (do
@@ -265,7 +265,7 @@
      (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
      (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
 
-  (declare wrap (Integer -> Integer -> System_ Unit))
+  (declare wrap (Integer * Integer -> System_ Unit))
   (define (wrap width height)
     (cmap
      (fn ((Position p))

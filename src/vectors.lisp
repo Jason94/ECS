@@ -35,7 +35,7 @@
   (define-type Vector2)
 
   (inline)
-  (declare vec2 (Single-Float -> Single-Float -> Vector2))
+  (declare vec2 (Single-Float * Single-Float -> Vector2))
   (define (vec2 x y)
     (lisp (-> Vector2) (x y)
       (v:vec2 x y)))
@@ -53,32 +53,32 @@
       (v:vy vec)))
 
   (inline)
-  (declare v+ (Vector2 -> Vector2 -> Vector2))
+  (declare v+ (Vector2 * Vector2 -> Vector2))
   (define (v+ a b)
     (lisp (-> Vector2) (a b)
       (v:v+ a b)))
 
   (inline)
-  (declare v- (Vector2 -> Vector2 -> Vector2))
+  (declare v- (Vector2 * Vector2 -> Vector2))
   (define (v- a b)
     (lisp (-> Vector2) (a b)
       (v:v- a b)))
 
   (inline)
-  (declare v* (Vector2 -> Single-Float -> Vector2))
+  (declare v* (Vector2 * Single-Float -> Vector2))
   (define (v* vec c)
     (lisp (-> Vector2) (vec c)
       (v:v* vec c)))
 
   (inline)
-  (declare v*-comp (Vector2 -> Vector2 -> Vector2))
+  (declare v*-comp (Vector2 * Vector2 -> Vector2))
   (define (v*-comp veca vecb)
     "Multiply corresponding components of VECA and VECB."
     (vec2 (* (vx veca) (vx vecb))
           (* (vy veca) (vy vecb))))
 
   (inline)
-  (declare v-rot (Single-Float -> Vector2 -> Vector2))
+  (declare v-rot (Single-Float * Vector2 -> Vector2))
   (define (v-rot phi vec)
     "Rotate VEC by PHI radians."
     (lisp (-> Vector2) (phi vec)
@@ -90,7 +90,7 @@
     (lisp (-> Single-Float) (vec)
       (v:vlength vec)))
 
-  (declare v-clamp (Single-Float -> Vector2 -> Vector2))
+  (declare v-clamp (Single-Float * Vector2 -> Vector2))
   (define (v-clamp max-len vec)
     "Shorten VEC to MAX-LEN if it is longer."
     (let len = (v-length vec))
@@ -99,7 +99,7 @@
         vec))
 
   (inline)
-  (declare v-distance (Vector2 -> Vector2 -> Single-Float))
+  (declare v-distance (Vector2 * Vector2 -> Single-Float))
   (define (v-distance v1 v2)
     (lisp (-> Single-Float) (v1 v2)
       (v:vdistance v1 v2)))
