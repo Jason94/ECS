@@ -251,27 +251,27 @@
 
   (declare rl-rect (Single-Float -> Single-Float -> Single-Float -> Single-Float -> RlRectangle))
   (define (rl-rect x y w h)
-    (lisp RlRectangle (x y w h)
+    (lisp (-> RlRectangle) (x y w h)
       (rl:make-rectangle :x x :y y :width w :height h)))
 
   (declare rl-r-x (RlRectangle -> Single-Float))
   (define (rl-r-x r)
-    (lisp Single-Float (r)
+    (lisp (-> Single-Float) (r)
       (rl:rectangle-x r)))
 
   (declare rl-r-y (RlRectangle -> Single-Float))
   (define (rl-r-y r)
-    (lisp Single-Float (r)
+    (lisp (-> Single-Float) (r)
       (rl:rectangle-y r)))
 
   (declare rl-r-w (RlRectangle -> Single-Float))
   (define (rl-r-w r)
-    (lisp Single-Float (r)
+    (lisp (-> Single-Float) (r)
       (rl:rectangle-width r)))
 
   (declare rl-r-h (RlRectangle -> Single-Float))
   (define (rl-r-h r)
-    (lisp Single-Float (r)
+    (lisp (-> Single-Float) (r)
       (rl:rectangle-height r)))
   )
 
@@ -287,11 +287,11 @@
 ;; TODO: This didn't work. Figure out a better way to make colors.
 ;; (declare color (String -> Color))
 ;; (define (color name)
-;;   (lisp Color (name)
+;;   (lisp (-> Color) (name)
 ;;     (cl:make-symbol name)))
 
 (cl:defmacro color (color-keyword)
-  `(lisp Color ()
+  `(lisp (-> Color) ()
      ,color-keyword))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -305,12 +305,12 @@
 
   (declare texture-width (Texture -> Integer))
   (define (texture-width texture)
-    (lisp Integer (texture)
+    (lisp (-> Integer) (texture)
       (rl:texture-width texture)))
 
   (declare texture-height (Texture -> Integer))
   (define (texture-height texture)
-    (lisp Integer (texture)
+    (lisp (-> Integer) (texture)
       (rl:texture-height texture)))
 
   (repr :native rl::render-texture)
@@ -330,7 +330,7 @@
 
   (declare unwrap-npatch-layout (NPatchLayout -> NPatchLayout%))
   (define (unwrap-npatch-layout layout)
-    (lisp NPatchLayout% (layout)
+    (lisp (-> NPatchLayout%) (layout)
       (cl:ecase layout
         (NPatchLayout/NPatchLayoutNinePatch :nine-patch)
         (NPatchLayout/NPatchLayoutThreePatchVertical :three-patch-vertical)
@@ -353,7 +353,7 @@
 
   (declare unwrap-texture-filter (TextureFilter -> TextureFilter%))
   (define (unwrap-texture-filter tex-filter)
-    (lisp TextureFilter% (tex-filter)
+    (lisp (-> TextureFilter%) (tex-filter)
       (cl:ecase tex-filter
         (TextureFilter/TextureFilterPoint :point)
         (TextureFilter/TextureFilterBilinear :bilinear)
@@ -374,7 +374,7 @@
 
   (declare unwrap-texture-wrap (TextureWrap -> TextureWrap%))
   (define (unwrap-texture-wrap wrap)
-    (lisp TextureWrap% (wrap)
+    (lisp (-> TextureWrap%) (wrap)
       (cl:ecase wrap
         (TextureWrap/TextureWrapRepeat :repeat)
         (TextureWrap/TextureWrapClamp :clamp)
@@ -384,7 +384,7 @@
   (declare make-npatch-info (RlRectangle -> Integer -> Integer -> Integer -> Integer -> NPatchLayout -> NPatchInfo))
   (define (make-npatch-info source left top right bottom layout)
     (let layout% = (unwrap-npatch-layout layout))
-    (lisp NPatchInfo (source left top right bottom layout%)
+    (lisp (-> NPatchInfo) (source left top right bottom layout%)
       (rl:make-patch-info
        :source source
        :left left
@@ -397,53 +397,53 @@
   (define (load-texture filename)
     (let path = (as String filename))
     (wrap-io
-      (lisp Texture (path)
+      (lisp (-> Texture) (path)
         (rl:load-texture path))))
 
   (declare load-texture-from-image (MonadIo :m => Image -> :m Texture))
   (define (load-texture-from-image image)
     (wrap-io
-      (lisp Texture (image)
+      (lisp (-> Texture) (image)
         (rl:load-texture-from-image image))))
 
   (declare load-render-texture (MonadIo :m => UFix -> UFix -> :m RenderTexture))
   (define (load-render-texture width height)
     (wrap-io
-      (lisp RenderTexture (width height)
+      (lisp (-> RenderTexture) (width height)
         (rl:load-render-texture width height))))
 
   (declare unload-texture (MonadIo :m => Texture -> :m Unit))
   (define (unload-texture texture)
     (wrap-io
-      (lisp :a (texture)
+      (lisp (-> :a) (texture)
         (rl:unload-texture texture))
       Unit))
 
   (declare unload-render-texture (MonadIo :m => RenderTexture -> :m Unit))
   (define (unload-render-texture texture)
     (wrap-io
-      (lisp :a (texture)
+      (lisp (-> :a) (texture)
         (rl:unload-render-texture texture))
       Unit))
 
   (declare update-texture (MonadIo :m => Texture -> :a -> :m Unit))
   (define (update-texture texture data)
     (wrap-io
-      (lisp :a (texture data)
+      (lisp (-> :a) (texture data)
         (rl:update-texture texture data))
       Unit))
 
   (declare update-texture-rec (MonadIo :m => Texture -> RlRectangle -> :a -> :m Unit))
   (define (update-texture-rec texture rectangle data)
     (wrap-io
-      (lisp :a (texture rectangle data)
+      (lisp (-> :a) (texture rectangle data)
         (rl:update-texture-rec texture rectangle data))
       Unit))
 
   (declare gen-texture-mipmaps (MonadIo :m => Texture -> :m Unit))
   (define (gen-texture-mipmaps texture)
     (wrap-io
-      (lisp :a (texture)
+      (lisp (-> :a) (texture)
         (rl:gen-texture-mipmaps texture))
       Unit))
 
@@ -451,7 +451,7 @@
   (define (set-texture-filter texture filter)
     (let filter% = (unwrap-texture-filter filter))
     (wrap-io
-      (lisp :a (texture filter%)
+      (lisp (-> :a) (texture filter%)
         (rl:set-texture-filter texture filter%))
       Unit))
 
@@ -459,35 +459,35 @@
   (define (set-texture-wrap texture wrap)
     (let wrap% = (unwrap-texture-wrap wrap))
     (wrap-io
-      (lisp :a (texture wrap%)
+      (lisp (-> :a) (texture wrap%)
         (rl:set-texture-wrap texture wrap%))
       Unit))
 
   (declare draw-texture (MonadIo :m => Texture -> Integer -> Integer -> Color -> :m Unit))
   (define (draw-texture texture pos-x pos-y tint)
     (wrap-io
-      (lisp :a (texture pos-x pos-y tint)
+      (lisp (-> :a) (texture pos-x pos-y tint)
         (rl:draw-texture texture pos-x pos-y tint))
       Unit))
 
   (declare draw-texture-v (MonadIo :m => Texture -> Vector2 -> Color -> :m Unit))
   (define (draw-texture-v texture position tint)
     (wrap-io
-      (lisp :a (texture position tint)
+      (lisp (-> :a) (texture position tint)
         (rl:draw-texture-v texture position tint))
       Unit))
 
   (declare draw-texture-ex (MonadIo :m => Texture -> Vector2 -> Single-Float -> Single-Float -> Color -> :m Unit))
   (define (draw-texture-ex texture position rotation scale tint)
     (wrap-io
-      (lisp :a (texture position rotation scale tint)
+      (lisp (-> :a) (texture position rotation scale tint)
         (rl:draw-texture-ex texture position rotation scale tint))
       Unit))
 
   (declare draw-texture-rec (MonadIo :m => Texture -> RlRectangle -> Vector2 -> Color -> :m Unit))
   (define (draw-texture-rec texture source position tint)
     (wrap-io
-      (lisp :a (texture source position tint)
+      (lisp (-> :a) (texture source position tint)
         (rl:draw-texture-rec texture source position tint))
       Unit))
 
@@ -496,7 +496,7 @@
                              -> :m Unit))
   (define (draw-texture-pro texture source dest origin rotation tint)
     (wrap-io
-      (lisp :a (texture source dest origin rotation tint)
+      (lisp (-> :a) (texture source dest origin rotation tint)
         (rl:draw-texture-pro texture source dest origin rotation tint))
       Unit))
 
@@ -505,7 +505,7 @@
                                  -> :m Unit))
   (define (draw-texture-n-patch texture npatch-info dest origin rotation tint)
     (wrap-io
-      (lisp :a (texture npatch-info dest origin rotation tint)
+      (lisp (-> :a) (texture npatch-info dest origin rotation tint)
         (rl:draw-texture-n-patch texture npatch-info dest origin rotation tint))
       Unit))
   )
@@ -525,7 +525,7 @@
   (declare window-should-close (MonadIo :m => :m Boolean))
   (define window-should-close
     (wrap-io
-      (lisp Boolean ()
+      (lisp (-> Boolean) ()
         (rl:window-should-close))))
 
   (declare with-window (MonadUnliftIO :m => WindowConfig -> :m :a -> :m Unit))
@@ -536,7 +536,7 @@
                    (run-io!
                     (run m-op))))
         (wrap-io
-          (lisp :a (w h title fps f)
+          (lisp (-> :a) (w h title fps f)
             (rl:with-window (w h title)
               (rl:set-target-fps fps)
               (call-coalton-function f)))
@@ -557,7 +557,7 @@
   (define show-cursor
     "Show the cursor."
     (wrap-io
-      (lisp :a ()
+      (lisp (-> :a) ()
         (rl:show-cursor))
       Unit))
 
@@ -565,7 +565,7 @@
   (define hide-cursor
     "Hide the cursor."
     (wrap-io
-      (lisp :a ()
+      (lisp (-> :a) ()
         (rl:hide-cursor))
       Unit))
 
@@ -573,14 +573,14 @@
   (define cursor-hidden?
     "Check if the cursor is hidden."
     (wrap-io
-      (lisp Boolean ()
+      (lisp (-> Boolean) ()
         (rl:is-cursor-hidden))))
 
   (declare cursor-on-screen? (MonadIo :m => :m Boolean))
   (define cursor-on-screen?
     "Check if the cursor is on the screen."
     (wrap-io
-      (lisp Boolean ()
+      (lisp (-> Boolean) ()
         (rl:is-cursor-on-screen))))
   )
 
@@ -604,7 +604,7 @@
 
   (declare unwrap-key (Key -> Key%))
   (define (unwrap-key key)
-    (lisp Key% (key)
+    (lisp (-> Key%) (key)
       (cl:ecase key
         (Key/KeyRight :key-right)
         (Key/KeyLeft :key-left)
@@ -619,7 +619,7 @@
     "Check if a key has been pressed once."
     (wrap-io
       (let key_ = (unwrap-key key))
-      (lisp Boolean (key_)
+      (lisp (-> Boolean) (key_)
         (rl:is-key-pressed key_))))
 
   (declare is-key-down (MonadIo :m => Key -> :m Boolean))
@@ -627,7 +627,7 @@
     "Check if a key is being pressed."
     (wrap-io
       (let key_ = (unwrap-key key))
-      (lisp Boolean (key_)
+      (lisp (-> Boolean) (key_)
         (rl:is-key-down key_))))
 
   (declare is-key-released (MonadIo :m => Key -> :m Boolean))
@@ -635,7 +635,7 @@
     "Check if a key has been released once."
     (wrap-io
       (let key_ = (unwrap-key key))
-      (lisp Boolean (key_)
+      (lisp (-> Boolean) (key_)
         (rl:is-key-released key_))))
   )
 
@@ -652,7 +652,7 @@
         (let  f = (fn ()
                     (run-io! (run m-op))))
         (wrap-io
-          (lisp :a (f)
+          (lisp (-> :a) (f)
             (rl:with-drawing
               (call-coalton-function f)))
           Unit))))
@@ -660,7 +660,7 @@
   (declare clear-background (MonadIo :m => Color -> :m Unit))
   (define (clear-background color)
     (wrap-io
-      (lisp :a (color)
+      (lisp (-> :a) (color)
         (rl:clear-background color))
       Unit))
   )
@@ -679,7 +679,7 @@
   (declare draw-fps (MonadIo :m => Integer -> Integer -> :m Unit))
   (define (draw-fps x y)
     (wrap-io
-      (lisp :a (x y)
+      (lisp (-> :a) (x y)
         (rl:draw-fps x y))
       Unit))
 
@@ -687,7 +687,7 @@
   (define (draw-text msg x y font-size color)
     (let str = (as String msg))
     (wrap-io
-      (lisp :a (str x y font-size color)
+      (lisp (-> :a) (str x y font-size color)
         (rl:draw-text str x y font-size color))
       Unit))
   )
@@ -701,42 +701,42 @@
   (declare draw-circle (MonadIo :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
   (define (draw-circle x y r color)
     (wrap-io
-      (lisp :a (x y r color)
+      (lisp (-> :a) (x y r color)
         (rl:draw-circle x y r color))
       Unit))
 
   (declare draw-circle-v (MonadIo :m => Vector2 -> Single-Float -> Color -> :m Unit))
   (define (draw-circle-v pos r color)
     (wrap-io
-      (lisp :a (pos r color)
+      (lisp (-> :a) (pos r color)
         (rl:draw-circle-v pos r color))
       Unit))
 
   (declare draw-circle-lines (MonadIo :m => Integer -> Integer -> Single-Float -> Color -> :m Unit))
   (define (draw-circle-lines x y r color)
     (wrap-io
-      (lisp :a (x y r color)
+      (lisp (-> :a) (x y r color)
         (rl:draw-circle-lines x y r color))
       Unit))
 
   (declare draw-circle-lines-v (MonadIo :m => Vector2 -> Single-Float -> Color -> :m Unit))
   (define (draw-circle-lines-v pos r color)
     (wrap-io
-      (lisp :a (pos r color)
+      (lisp (-> :a) (pos r color)
         (rl:draw-circle-lines-v pos r color))
       Unit))
 
   (declare draw-triangle (MonadIo :m => Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
   (define (draw-triangle v1 v2 v3 color)
     (wrap-io
-      (lisp :a (v1 v2 v3 color)
+      (lisp (-> :a) (v1 v2 v3 color)
         (rl:draw-triangle v1 v2 v3 color))
       Unit))
 
   (declare draw-triangle-lines (MonadIo :m => Vector2 -> Vector2 -> Vector2 -> Color -> :m Unit))
   (define (draw-triangle-lines v1 v2 v3 color)
     (wrap-io
-      (lisp :a (v1 v2 v3 color)
+      (lisp (-> :a) (v1 v2 v3 color)
         (rl:draw-triangle-lines v1 v2 v3 color))
       Unit))
 
@@ -746,7 +746,7 @@
       (let v1_ = (v+ pos v1))
       (let v2_ = (v+ pos v2))
       (let v3_ = (v+ pos v3))
-      (lisp :a (v1_ v2_ v3_ color)
+      (lisp (-> :a) (v1_ v2_ v3_ color)
         (rl:draw-triangle v1_ v2_ v3_ color))
       Unit))
 
@@ -756,7 +756,7 @@
       (let v1_ = (v+ pos v1))
       (let v2_ = (v+ pos v2))
       (let v3_ = (v+ pos v3))
-      (lisp :a (v1_ v2_ v3_ color)
+      (lisp (-> :a) (v1_ v2_ v3_ color)
         (rl:draw-triangle-lines v1_ v2_ v3_ color))
       Unit))
 
@@ -765,7 +765,7 @@
                            -> :m Unit))
   (define (draw-rectangle x y width height color)
     (wrap-io
-      (lisp :a (x y width height color)
+      (lisp (-> :a) (x y width height color)
         (rl:draw-rectangle x y width height color))
       Unit))
 
@@ -774,14 +774,14 @@
                                  -> :m Unit))
   (define (draw-rectangle-lines x y width height color)
     (wrap-io
-      (lisp :a (x y width height color)
+      (lisp (-> :a) (x y width height color)
         (rl:draw-rectangle-lines x y width height color))
       Unit))
 
   (declare draw-rectangle-v (MonadIo :m => Vector2 -> Vector2 -> Color -> :m Unit))
   (define (draw-rectangle-v pos size color)
     (wrap-io
-      (lisp :a (pos size color)
+      (lisp (-> :a) (pos size color)
         (rl:draw-rectangle-v pos size color))
       Unit))
 
@@ -797,14 +797,14 @@
   (define (draw-rectangle-rec rec color)
     "Draw a color filled rectangle."
     (wrap-io
-      (lisp :a (rec color)
+      (lisp (-> :a) (rec color)
         (rl:draw-rectangle-rec rec color))
       Unit))
 
   (declare draw-rectangle-lines-rec (MonadIo :m => RlRectangle -> Single-Float -> Color -> :m Unit))
   (define (draw-rectangle-lines-rec rec line-thickness color)
     (wrap-io
-      (lisp :a (rec line-thickness color)
+      (lisp (-> :a) (rec line-thickness color)
         (rl:draw-rectangle-lines-ex rec line-thickness color))
       Unit))
   )
@@ -825,7 +825,7 @@
     (let target = (vec2 0.0 0.0))
     (let rotation = 0.0)
     (let zoom = 1.0)
-    (lisp Camera2D (offset target rotation zoom)
+    (lisp (-> Camera2D) (offset target rotation zoom)
       (rl:make-camera2d
        :offset offset
        :target target
@@ -834,49 +834,49 @@
 
   (declare camera2d-offset_ (Camera2D -> Vector2))
   (define (camera2d-offset_ camera)
-    (lisp Vector2 (camera)
+    (lisp (-> Vector2) (camera)
       (rl:camera2d-offset camera)))
 
   (declare camera2d-target_ (Camera2D -> Vector2))
   (define (camera2d-target_ camera)
-    (lisp Vector2 (camera)
+    (lisp (-> Vector2) (camera)
       (rl:camera2d-target camera)))
 
   (declare camera2d-rotation_ (Camera2D -> Single-Float))
   (define (camera2d-rotation_ camera)
-    (lisp Single-Float (camera)
+    (lisp (-> Single-Float) (camera)
       (rl:camera2d-rotation camera)))
 
   (declare camera2d-zoom_ (Camera2D -> Single-Float))
   (define (camera2d-zoom_ camera)
-    (lisp Single-Float (camera)
+    (lisp (-> Single-Float) (camera)
       (rl:camera2d-zoom camera)))
 
   (declare set-camera2d-offset_ (MonadIO :m => Vector2 -> Camera2D -> :m Unit))
   (define (set-camera2d-offset_ offset camera)
     (wrap-io
-      (lisp :a (offset camera)
+      (lisp (-> :a) (offset camera)
         (cl:setf (rl:camera2d-offset camera) offset))
       Unit))
 
   (declare set-camera2d-target_ (MonadIO :m => Vector2 -> Camera2D -> :m Unit))
   (define (set-camera2d-target_ target camera)
     (wrap-io
-      (lisp :a (target camera)
+      (lisp (-> :a) (target camera)
         (cl:setf (rl:camera2d-target camera) target))
       Unit))
 
   (declare set-camera2d-rotation_ (MonadIO :m => Single-Float -> Camera2D -> :m Unit))
   (define (set-camera2d-rotation_ rotation camera)
     (wrap-io
-      (lisp :a (rotation camera)
+      (lisp (-> :a) (rotation camera)
         (cl:setf (rl:camera2d-rotation camera) rotation))
       Unit))
 
   (declare set-camera2d-zoom_ (MonadIO :m => Single-Float -> Camera2D -> :m Unit))
   (define (set-camera2d-zoom_ zoom camera)
     (wrap-io
-      (lisp :a (zoom camera)
+      (lisp (-> :a) (zoom camera)
         (cl:setf (rl:camera2d-zoom camera) zoom))
       Unit))
 
@@ -887,7 +887,7 @@
       (fn (run)
         (let f = (run m-op))
         (wrap-io
-          (lisp :a (camera f)
+          (lisp (-> :a) (camera f)
             (rl:with-mode-2d (camera)
               (call-coalton-function f)))
           Unit))))
@@ -906,34 +906,34 @@
 
   (declare check-collision-circles (Vector2 -> Single-Float -> Vector2 -> Single-Float -> Boolean))
   (define (check-collision-circles pos1 r1 pos2 r2)
-    (lisp Boolean (pos1 r1 pos2 r2)
+    (lisp (-> Boolean) (pos1 r1 pos2 r2)
       (rl:check-collision-circles pos1 r1 pos2 r2)))
 
   (declare check-collision-circle-line (Vector2 -> Single-Float -> Vector2 -> Vector2 -> Boolean))
   (define (check-collision-circle-line pos1 r1 start2 end2)
-    (lisp Boolean (pos1 r1 start2 end2)
+    (lisp (-> Boolean) (pos1 r1 start2 end2)
       (rl:check-collision-circle-line pos1 r1 start2 end2)))
 
   (declare check-collision-lines (Vector2 -> Vector2 -> Vector2 -> Vector2 -> Boolean))
   (define (check-collision-lines p11 p12 p21 p22)
     "Check if the line from P11 to P22 intersects with the line from P21 to P22."
-    (lisp Boolean (p11 p12 p21 p22)
+    (lisp (-> Boolean) (p11 p12 p21 p22)
       (rl:check-collision-lines p11 p12 p21 p22 (cffi:null-pointer))))
 
   (declare check-collision-rects (RlRectangle -> RlRectangle -> Boolean))
   (define (check-collision-rects rec1 rec2)
-    (lisp Boolean (rec1 rec2)
+    (lisp (-> Boolean) (rec1 rec2)
       (rl:check-collision-recs rec1 rec2)))
 
   (declare check-collision-circle-rec (Vector2 -> Single-Float -> RlRectangle -> Boolean))
   (define (check-collision-circle-rec pos1 r1 rec2)
-    (lisp Boolean (pos1 r1 rec2)
+    (lisp (-> Boolean) (pos1 r1 rec2)
       (rl:check-collision-circle-rec pos1 r1 rec2)))
 
   (declare get-collision-rec (RlRectangle -> RlRectangle -> Optional RlRectangle))
   (define (get-collision-rec rec1 rec2)
     (let result =
-      (lisp RlRectangle (rec1 rec2)
+      (lisp (-> RlRectangle) (rec1 rec2)
         (rl:get-collision-rec rec1 rec2)))
     (if (and (== 0.0 (rl-r-w result))
              (== 0.0 (rl-r-h result)))
@@ -944,7 +944,7 @@
   (define (get-collision-pt p11 p12 p21 p22)
     "Get the point (if any) where the line from P11 to P12 intersects the line
 from P21 to P22."
-    (lisp (Optional Vector2) (p11 p12 p21 p22)
+    (lisp (-> (Optional Vector2)) (p11 p12 p21 p22)
       (cffi:with-foreign-object (collision '(:struct rl::%vector2))
         (cl:let ((hit? (rl:check-collision-lines p11 p12 p21 p22 collision)))
           (cl:if hit?
@@ -966,14 +966,14 @@ from P21 to P22."
  (define get-frame-time
    "Get time in seconds for last frame drawn."
    (wrap-io
-    (lisp Single-Float ()
+    (lisp (-> Single-Float) ()
       (rl:get-frame-time))))
 
   (declare get-time (MonadIo :m => :m Double-Float))
   (define get-time
     "Get elapsed time in seconds since init-window."
     (wrap-io
-     (lisp Double-Float ()
+     (lisp (-> Double-Float) ()
        (rl:get-time))))
   )
 
@@ -986,34 +986,34 @@ from P21 to P22."
   (declare init-audio-device (MonadIo :m => :m Unit))
   (define init-audio-device
     (wrap-io
-      (lisp :a ()
+      (lisp (-> :a) ()
         (rl:init-audio-device))
       Unit))
 
   (declare close-audio-device (MonadIo :m => :m Unit))
   (define close-audio-device
     (wrap-io
-      (lisp :a ()
+      (lisp (-> :a) ()
         (rl:close-audio-device))
       Unit))
 
   (declare audio-device-ready? (MonadIo :m => :m Boolean))
   (define audio-device-ready?
     (wrap-io
-      (lisp Boolean ()
+      (lisp (-> Boolean) ()
         (rl:is-audio-device-ready))))
 
   (declare set-master-volume (MonadIo :m => Single-Float -> :m Unit))
   (define (set-master-volume volume)
     (wrap-io
-      (lisp :a (volume)
+      (lisp (-> :a) (volume)
         (rl:set-master-volume volume))
       Unit))
 
   (declare get-master-volume (MonadIo :m => :m Single-Float))
   (define get-master-volume
     (wrap-io
-      (lisp Single-Float ()
+      (lisp (-> Single-Float) ()
         (rl:get-master-volume))))
 
   )
@@ -1032,62 +1032,62 @@ from P21 to P22."
     "Load a sound from file."
     (wrap-io
       (let filename-str = (as String filename))
-      (lisp Sound (filename-str)
+      (lisp (-> Sound) (filename-str)
         (rl:load-sound filename-str))))
 
   (declare unload-sound (MonadIo :m => Sound -> :m Unit))
   (define (unload-sound sound)
     (wrap-io
-      (lisp :a (sound)
+      (lisp (-> :a) (sound)
         (rl:unload-sound sound))
       Unit))
 
   (declare play-sound (MonadIo :m => Sound -> :m Unit))
   (define (play-sound sound)
     (wrap-io
-      (lisp :a (sound)
+      (lisp (-> :a) (sound)
         (rl:play-sound sound))
       Unit))
 
   (declare pause-sound (MonadIo :m => Sound -> :m Unit))
   (define (pause-sound sound)
     (wrap-io
-      (lisp :a (sound)
+      (lisp (-> :a) (sound)
         (rl:pause-sound sound))
       Unit))
 
   (declare stop-sound (MonadIo :m => Sound -> :m Unit))
   (define (stop-sound sound)
     (wrap-io
-      (lisp :a (sound)
+      (lisp (-> :a) (sound)
         (rl:stop-sound sound))
       Unit))
 
   (declare resume-sound (MonadIo :m => Sound -> :m Unit))
   (define (resume-sound sound)
     (wrap-io
-      (lisp :a (sound)
+      (lisp (-> :a) (sound)
         (rl:resume-sound sound))
       Unit))
 
   (declare set-sound-volume (MonadIo :m => Sound -> Single-Float -> :m Unit))
   (define (set-sound-volume sound volume)
     (wrap-io
-      (lisp :a (sound volume)
+      (lisp (-> :a) (sound volume)
         (rl:set-sound-volume sound volume))
       Unit))
 
   (declare set-sound-pitch (MonadIo :m => Sound -> Single-Float -> :m Unit))
   (define (set-sound-pitch sound pitch)
     (wrap-io
-      (lisp :a (sound pitch)
+      (lisp (-> :a) (sound pitch)
         (rl:set-sound-pitch sound pitch))
       Unit))
 
   (declare set-sound-pan (MonadIo :m => Sound -> Single-Float -> :m Unit))
   (define (set-sound-pan sound pan)
     (wrap-io
-      (lisp :a (sound pan)
+      (lisp (-> :a) (sound pan)
         (rl:set-sound-pan sound pan))
       Unit))
   )
@@ -1106,14 +1106,14 @@ from P21 to P22."
     "Load a music stream from a file."
     (wrap-io
       (let filename-str = (as String filename))
-      (lisp Music (filename-str)
+      (lisp (-> Music) (filename-str)
         (rl:load-music-stream filename-str))))
 
   (declare update-music-stream (MonadIo :m => Music -> :m Unit))
   (define (update-music-stream music)
     "Updates buffers for music streaming. Must run every frame!"
     (wrap-io
-      (lisp :a (music)
+      (lisp (-> :a) (music)
         (rl:update-music-stream music))
       Unit))
 
@@ -1122,41 +1122,41 @@ from P21 to P22."
   ;; (declare is-music-valid? (Music -> Boolean))
   ;; (define (is-music-valid? music)
   ;;   "Check if a music stream is valid (context and buffers initialized)."
-  ;;   (lisp Boolean (music)
+  ;;   (lisp (-> Boolean) (music)
   ;;     (rl:is-music-ready music)))
 
   (declare unload-music-stream (MonadIo :m => Music -> :m Unit))
   (define (unload-music-stream music)
     (wrap-io
-      (lisp :a (music)
+      (lisp (-> :a) (music)
         (rl:unload-music-stream music))
       Unit))
 
   (declare play-music-stream (MonadIo :m => Music -> :m Unit))
   (define (play-music-stream music)
     (wrap-io
-      (lisp :a (music)
+      (lisp (-> :a) (music)
         (rl:play-music-stream music))
       Unit))
 
   (declare stop-music-stream (MonadIo :m => Music -> :m Unit))
   (define (stop-music-stream music)
     (wrap-io
-      (lisp :a (music)
+      (lisp (-> :a) (music)
         (rl:stop-music-stream music))
       Unit))
 
   (declare pause-music-stream (MonadIo :m => Music -> :m Unit))
   (define (pause-music-stream music)
     (wrap-io
-      (lisp :a (music)
+      (lisp (-> :a) (music)
         (rl:pause-music-stream music))
       Unit))
 
   (declare resume-music-stream (MonadIo :m => Music -> :m Unit))
   (define (resume-music-stream music)
     (wrap-io
-      (lisp :a (music)
+      (lisp (-> :a) (music)
         (rl:resume-music-stream music))
       Unit))
   )

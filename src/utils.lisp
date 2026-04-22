@@ -57,27 +57,27 @@
 (coalton-toplevel
   (declare force-string (:a -> String))
   (define (force-string x)
-    (lisp String (x)
+    (lisp (-> String) (x)
       (cl:format cl:nil "~a" x)))
 
   (declare to-ufix (Integer -> UFix))
   (define (to-ufix x)
-    (lisp UFix (x)
+    (lisp (-> UFix) (x)
       x))
 
   (declare to-float (Integer -> Single-Float))
   (define (to-float x)
-    (lisp Single-Float (x)
+    (lisp (-> Single-Float) (x)
       (cl:float x)))
 
   (declare to-double (Single-Float -> Double-Float))
   (define (to-double x)
-    (lisp Double-Float (x)
+    (lisp (-> Double-Float) (x)
       (cl:coerce x 'cl:double-float)))
 
   (declare to-single (Double-Float -> Single-Float))
   (define (to-single x)
-    (lisp Single-Float (x)
+    (lisp (-> Single-Float) (x)
       (cl:coerce x 'cl:single-float)))
 
   (declare clamp (Ord :n => :n -> :n -> :n -> :n))
