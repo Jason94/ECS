@@ -103,13 +103,14 @@
   (declare filterM (Applicative :m => (:a -> :m Boolean) * List :a -> :m (List :a)))
   (define (filterM m? lst)
     (foldr
-     (fn (elt)
+     (fn (elt accum)
        (liftA2
-        (fn (keep?)
+        (fn (keep? accum)
           (if keep?
-              (Cons elt)
-              id))
-        (m? elt)))
+              (Cons elt accum)
+              accum))
+        (m? elt)
+        accum))
      (pure Nil)
      lst))
 
@@ -136,7 +137,11 @@
 
 (coalton-toplevel
   (declare <*> (Applicative :f => :f (:a -> :b) * :f :a -> :f :b))
-  (define <*> (liftA2 id)))
+  (define (<*> fa->b fa)
+    (liftA2 (fn (a->b a)
+              (a->b a))
+            fa->b
+            fa)))
 
 (cl:defun liftAn_ (f rest)
   (cl:let ((len (cl:length rest)))
