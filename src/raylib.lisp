@@ -818,7 +818,7 @@
   (repr :native rl::camera2d)
   (define-type Camera2D)
 
-  (declare make-camera2d (Unit -> Camera2D))
+  (declare make-camera2d (Void -> Camera2D))
   (define (make-camera2d)
     "Make a Camera2D starting at (0,0)."
     (let offset = (vec2 0.0 0.0))

@@ -564,7 +564,7 @@ to transition into, or NONE to stay in the same mode."
             (set global-ent next-mode)
             enter-game-mode)))))
 
-  (declare run-main (Unit -> Unit))
+  (declare run-main (Void -> Unit))
   (define (run-main)
     (run-io! main)))
 

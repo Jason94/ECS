@@ -146,7 +146,7 @@
        reward-and-greet
        report))))
 
-  (declare run-main (Unit -> Unit))
+  (declare run-main (Void -> Unit))
   (define (run-main)
     (run-io! main))
   )

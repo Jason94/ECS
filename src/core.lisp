@@ -201,7 +201,7 @@
   ;; TODO: Might be able to either drop Component here or the fundep
   (define-class ((Monad :m) (Component :s :c) => Has :w :m :s :c (:w :c -> :s))
     (get-store
-     (Unit -> SystemT :w :m :s)))
+     (Void -> SystemT :w :m :s)))
 
   (define-class ((Has :w :m :s :c) (ExplGet :m :s :c)
                  => HasGet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
