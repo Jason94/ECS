@@ -143,22 +143,28 @@
             fa->b
             fa)))
 
-(cl:defun liftAn_ (f rest)
+(cl:defmacro liftAn (f cl:&rest rest)
   (cl:let ((len (cl:length rest)))
     (cl:cond
-      ((cl:< len 1) (cl:error "liftAn requires one or more terms!"))
-      ((cl:eq len 1)
+      ((cl:< len 1)
+       (cl:error "liftAn requires one or more terms!"))
+      ((cl:= len 1)
        `(map ,f ,@rest))
-      ((cl:eq len 2)
+      ((cl:= len 2)
        `(liftA2 ,f ,@rest))
       (cl:t
-       (cl:let* ((flipped (cl:reverse rest))
-                 (elt (cl:car flipped))
-                 (rem (cl:reverse (cl:cdr flipped))))
-         `(<*> ,(liftAn_ f rem) ,elt))))))
-
-(cl:defmacro liftAn (f cl:&rest rest)
-  (liftAn_ f rest))
+       (cl:let* ((args (cl:loop :repeat len :collect (cl:gensym "ARG-")))
+                 (body `(,f ,@args)))
+         (cl:loop :for arg :in (cl:reverse (cl:cddr args))
+                  :do (cl:setf body `(fn (,arg) ,body)))
+         (cl:let ((expr `(liftA2
+                          (fn (,(cl:first args) ,(cl:second args))
+                            ,body)
+                          ,(cl:first rest)
+                          ,(cl:second rest))))
+           (cl:loop :for term :in (cl:cddr rest)
+                    :do (cl:setf expr `(<*> ,expr ,term)))
+           expr))))))
 
 (coalton-toplevel
 
