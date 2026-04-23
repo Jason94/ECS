@@ -882,7 +882,8 @@
     "Run M-OP with CAMERA."
     (with-run-in-io
       (fn (run)
-        (let f = (run m-op))
+        (let f = (fn ()
+                   (run m-op)))
         (wrap-io
           (lisp (-> :a) (camera f)
             (rl:with-mode-2d (camera)
