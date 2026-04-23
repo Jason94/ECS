@@ -6,6 +6,7 @@
    #:coalton-library/classes
    )
   (:local-nicknames
+   (:it #:coalton/iterator)
    (:l #:coalton-library/list)
    (:opt #:coalton-library/optional)
    (:t #:coalton-library/types))
@@ -48,6 +49,8 @@
    #:Right
    #:as-proxy-of-left
    #:as-proxy-of-right
+
+   #:foreach
    ))
 
 (in-package :ecs/utils)
@@ -245,3 +248,19 @@
   (define (as-proxy-of-right _)
     t:Proxy)
   )
+
+(defmacro foreach ((variable iter) cl:&body body)
+  "Perform `body` with `variable` bound to each element in `iter`.
+
+`iter` must have a valid `IntoIter` instance."
+  (cl:let ((iter-sym (cl:gensym "iter"))
+           (item?-sym (cl:gensym "item?")))
+   `(let ((,iter-sym (it:into-iter ,iter)))
+      (for ((,item?-sym (it:next! ,iter-sym) (it:next! ,iter-sym)))
+        (match ,item?-sym
+          ((Some ,variable)
+           ,@body
+           Unit)
+          ((None)
+           (break)
+           Unit))))))

@@ -7,15 +7,16 @@
    #:coalton-library/classes
    #:coalton-library/monad/environment
    #:coalton-library/experimental/do-control-core
-   #:coalton-library/experimental/do-control-loops
    #:io/monad-io
-   #:io/unlift
    #:io/term
    #:io/simple-io
    #:ecs
    #:ecs/utils
    #:ecs/common-components
    #:ecs/vectors
+   )
+  (:import-from #:coalton-library/experimental/do-control-loops
+   #:do-foreach
    )
   (:import-from #:coalton-library/math/real
    #:round)
@@ -526,7 +527,7 @@
       (lisp (-> Boolean) ()
         (rl:window-should-close))))
 
-  (declare with-window (MonadUnliftIO :m => WindowConfig * :m :a -> :m Unit))
+  (declare with-window (UnliftIO :m IO => WindowConfig * :m :a -> :m Unit))
   (define (with-window (WindowConfig w h title fps) m-op)
     (with-run-in-io
       (fn (run)
@@ -643,7 +644,7 @@
 
 (coalton-toplevel
   ;; ;; TODO: Could make drawing typesafe by having a unique drawing monad
-  (declare with-drawing (MonadUnliftIO :m => :m :a -> :m Unit))
+  (declare with-drawing (UnliftIO :m IO => :m :a -> :m Unit))
   (define (with-drawing m-op)
     (with-run-in-io
       (fn (run)
@@ -876,7 +877,7 @@
         (cl:setf (rl:camera2d-zoom camera) zoom))
       Unit))
 
-  (declare with-camera2d_ (MonadUnliftIo :m => Camera2D * :m :a -> :m Unit))
+  (declare with-camera2d_ (UnliftIO :m IO => Camera2D * :m :a -> :m Unit))
   (define (with-camera2d_ camera m-op)
     "Run M-OP with CAMERA."
     (with-run-in-io
@@ -1242,7 +1243,7 @@ from P21 to P22."
      (c <- (get global-ent))
      (set-camera2d-zoom_ zoom c)))
 
-  (declare with-camera2d ((MonadUnliftIo :m)
+  (declare with-camera2d ((UnliftIO :m IO)
                           (HasGet :w :m CameraStore Camera2D)
                           => SystemT :w :m :a -> SystemT :w :m Unit))
   (define (with-camera2d m-op)
@@ -1323,7 +1324,8 @@ raise an error."
                          => :k -> SystemT :w :m Texture))
   (define (get-texture# key)
     "Get the loaded-texture stored under KEY. Errors if not found."
-    (map (opt:from-some "Could not find texture.") (get-texture key)))
+    (map (fn (x) (opt:from-some "Could not find texture." x))
+         (get-texture key)))
 
   (declare unstore-texture ((MonadIo :m)
                             (Into :k String)
@@ -1346,7 +1348,7 @@ raise an error."
     (do
      (tex-map <- (get global-ent))
      (let _ = (the TextureMap tex-map))
-     (do-foreach (texture (hm:values tex-map))
+     (do-foreach (texture (hm:values-iter tex-map))
        (unload-texture texture))
      (set global-ent (the TextureMap hm:empty))))
   )
@@ -1500,7 +1502,8 @@ raise an error."
       ((DrawTexture texture)
        (draw-texture-v texture pos (color :white)))
       ((CompositeShape shapes)
-       (foreach shapes (draw-shape pos ang?)))
+       (do-foreach (shape shapes)
+         (draw-shape pos ang? shape)))
       ))
 
   (declare draw-all-shapes ((MonadIo :m)
@@ -1535,7 +1538,8 @@ be rotated by the Angle component, if the entity has one."
                 (check-collision pos1 s1 pos2 bs2))
               bs1s))
       ((Tuple _ (CompositeBounding bs2s))
-       (l:any (check-collision pos1 bs1 pos2)
+       (l:any (fn (bs2)
+                (check-collision pos1 bs1 pos2 bs2))
               bs2s))
       ((Tuple (BoundingShape s1) (BoundingShape s2))
        (shapes-collide? pos1 s1 pos2 s2))))
@@ -1650,7 +1654,7 @@ already been loaded under KEY."
     (do
      (sound-map <- (get global-ent))
      (let _ = (the SoundMap sound-map))
-     (do-foreach (sound (hm:values sound-map))
+     (do-foreach (sound (hm:values-iter sound-map))
        (unload-sound sound))
      (set global-ent (the SoundMap hm:empty))))
   )
@@ -1744,7 +1748,7 @@ already been loaded under KEY."
     (do
      (music-map <- (get global-ent))
      (let _ = (the MusicMap music-map))
-     (do-foreach (music (hm:values music-map))
+     (do-foreach (music (hm:values-iter music-map))
        (unload-music-stream music))
      (set global-ent (the MusicMap hm:empty))))
   )
