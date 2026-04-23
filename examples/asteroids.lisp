@@ -6,7 +6,6 @@
    #:coalton-library/classes
    #:coalton-library/monad/environment
    #:coalton-library/experimental/do-control-core
-   #:coalton-library/experimental/do-control-loops
    #:io/monad-io
    #:io/term
    #:io/simple-io
@@ -16,6 +15,11 @@
    #:ecs/vectors
    #:ecs/common-components
    #:ecs/raylib
+   )
+  (:import-from #:coalton-library/experimental/do-control-loops
+   #:do-foreach
+   #:do-loop-times
+   #:do-loop-do-while
    )
   (:local-nicknames
    (:mut #:io/mut)
@@ -316,11 +320,11 @@
        (do-cforeach (Tuple3 (Bullet) ety2 (Position p2))
          (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
            increment-score
-           (mut:modify etys-to-remove (Cons ety1))
-           (mut:modify etys-to-remove (Cons ety2)))))
-      (etys-to-remove <- (mut:read etys-to-remove))
-      (do-foreach (ety etys-to-remove)
-        (remove-entity ety))))
+           (mut:modify etys-to-remove (fn (l) (Cons ety1 l)))
+           (mut:modify etys-to-remove (fn (l) (Cons ety2 l))))))
+     (etys-to-remove <- (mut:read etys-to-remove))
+     (do-foreach (ety etys-to-remove)
+       (remove-entity ety))))
 
   (declare check-game-over (System_ Boolean))
   (define check-game-over
@@ -402,7 +406,8 @@
      (ents-to-remove <- (mut:new-var Nil))
      (do-cforeach (Tuple obj ety)
        (let _ = (the (Either (Either Player Asteroid) Bullet) obj))
-       (mut:modify ents-to-remove (Cons ety)))
+       (mut:modify ents-to-remove (fn (l)
+                                    (Cons ety l))))
      (ents-to-remove <- (mut:read ents-to-remove))
      (do-foreach (ety ents-to-remove)
        (remove-entity ety))
@@ -566,7 +571,8 @@ to transition into, or NONE to stay in the same mode."
 
   (declare run-main (Void -> Void))
   (define (run-main)
-    (run-io! main)))
+    (run-io! main)
+    (values)))
 
 (cl:defun play ()
   (call-coalton-function run-main))

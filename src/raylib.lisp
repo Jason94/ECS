@@ -1558,7 +1558,9 @@ be rotated by the Angle component, if the entity has one."
      (delta-time <- get-frame-time)
      (let anim-cmp-prox = (animation-component-prox anim-prox))
      (let f-prx = (proxy-from-ret_ anim-cmp-prox))
-     (let f = (t:as-proxy-of (update-animation (to-double delta-time)) f-prx))
+     (let f = (t:as-proxy-of (fn (anim-cmp)
+                               (update-animation (to-double delta-time) anim-cmp))
+                             f-prx))
      (cmap f)))
   )
 
@@ -1631,7 +1633,8 @@ already been loaded under KEY."
                        => :k -> SystemT :w :m Sound))
   (define (get-sound# key)
     "Get the loaded-sound stored under KEY. Errors if not found."
-    (map (opt:from-some "Could not find sound.") (get-sound key)))
+    (map (fn (x) (opt:from-some "Could not find sound." x))
+         (get-sound key)))
 
   (declare unstore-sound ((MonadIo :m)
                           (Into :k String)
@@ -1725,7 +1728,8 @@ already been loaded under KEY."
                        => :k -> SystemT :w :m Music))
   (define (get-music# key)
     "Get the loaded-music stored under KEY. Errors if not found."
-    (map (opt:from-some "Could not find music.") (get-music key)))
+    (map (fn (x) (opt:from-some "Could not find music." x))
+         (get-music key)))
 
   (declare unstore-music ((MonadIo :m)
                           (Into :k String)
