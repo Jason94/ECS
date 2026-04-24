@@ -23,11 +23,13 @@
    )
   (:local-nicknames
    (:mut #:io/mut)
+   (:tm #:io/term)
    )
   )
 
 (in-package :ecs-asteroids)
 
+(cl:declaim (cl:optimize (cl:speed 0) (cl:debug 3) (cl:safety 3)))
 (named-readtables:in-readtable coalton:coalton)
 
 ;;;;
@@ -558,16 +560,20 @@ to transition into, or NONE to stay in the same mode."
 
   (declare main (IO Unit))
   (define main
+    (do
+      (tm:write-line "Starting main")
     (do-with-window (WindowConfig (to-ufix width) (to-ufix height) "Asteroids" (to-ufix FPS))
       (w <- init-world)
       (do-run-with w
         enter-game-mode
+        (tm:write-line "DEBUG before should-close")
         (do-loop-do-while should-close
+          (tm:write-line "DEBUG after should-close")
           (next-mode? <- loop-game-mode)
           (do-when-val (next-mode next-mode?)
             cleanup-game-mode
             (set global-ent next-mode)
-            enter-game-mode)))))
+            enter-game-mode))))))
 
   (declare run-main (Void -> Void))
   (define (run-main)
