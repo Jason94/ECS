@@ -14,17 +14,15 @@
    #:ecs/utils
    #:ecs/vectors
    #:ecs/common-components
-   #:ecs/raylib
-   )
+   #:ecs/raylib)
   (:import-from #:coalton-library/experimental/do-control-loops
    #:do-foreach
    #:do-loop-times
-   #:do-loop-do-while
-   )
+   #:do-loop-do-while)
   (:local-nicknames
-   (:mut #:io/mut)
-   (:tm #:io/term)
-   )
+   (:mut #:io/mut))
+  (:export
+   #:play)
   )
 
 (in-package :ecs-asteroids)
@@ -554,26 +552,23 @@ to transition into, or NONE to stay in the same mode."
 
 (coalton-toplevel
 
-  (declare should-close (System_ Boolean))
-  (define should-close
-    window-should-close)
+  (declare should-continue (System_ Boolean))
+  (define should-continue
+    (map not
+         window-should-close))
 
   (declare main (IO Unit))
   (define main
-    (do
-      (tm:write-line "Starting main")
     (do-with-window (WindowConfig (to-ufix width) (to-ufix height) "Asteroids" (to-ufix FPS))
       (w <- init-world)
       (do-run-with w
         enter-game-mode
-        (tm:write-line "DEBUG before should-close")
-        (do-loop-do-while should-close
-          (tm:write-line "DEBUG after should-close")
+        (do-loop-do-while should-continue
           (next-mode? <- loop-game-mode)
           (do-when-val (next-mode next-mode?)
             cleanup-game-mode
             (set global-ent next-mode)
-            enter-game-mode))))))
+            enter-game-mode)))))
 
   (declare run-main (Void -> Void))
   (define (run-main)
@@ -583,4 +578,3 @@ to transition into, or NONE to stay in the same mode."
 (cl:defun play ()
   (call-coalton-function run-main))
 
-(play)
