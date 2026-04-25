@@ -27,6 +27,7 @@
   :components ((:module "examples"
                 :components
                 ((:file "simple")
+                 (:file "simple-raylib")
                  (:file "asteroids")
                  (:file "textures")
                  )))
