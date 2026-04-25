@@ -18,3 +18,17 @@
                  (:file "raylib")
                  )))
   )
+
+(defsystem "ecs/examples"
+  :long-name "Coalton Entity-Component-System, Examples"
+  :author "Jason Walker"
+  :maintainer "Jason Walker"
+  :depends-on ("ecs")
+  :components ((:module "examples"
+                :components
+                ((:file "simple")
+                 (:file "simple-raylib")
+                 (:file "asteroids")
+                 (:file "textures")
+                 )))
+  )

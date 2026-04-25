@@ -6,6 +6,7 @@
    #:coalton-library/classes
    )
   (:local-nicknames
+   (:it #:coalton/iterator)
    (:l #:coalton-library/list)
    (:opt #:coalton-library/optional)
    (:t #:coalton-library/types))
@@ -48,6 +49,8 @@
    #:Right
    #:as-proxy-of-left
    #:as-proxy-of-right
+
+   #:foreach
    ))
 
 (in-package :ecs/utils)
@@ -57,41 +60,41 @@
 (coalton-toplevel
   (declare force-string (:a -> String))
   (define (force-string x)
-    (lisp String (x)
+    (lisp (-> String) (x)
       (cl:format cl:nil "~a" x)))
 
   (declare to-ufix (Integer -> UFix))
   (define (to-ufix x)
-    (lisp UFix (x)
+    (lisp (-> UFix) (x)
       x))
 
   (declare to-float (Integer -> Single-Float))
   (define (to-float x)
-    (lisp Single-Float (x)
+    (lisp (-> Single-Float) (x)
       (cl:float x)))
 
   (declare to-double (Single-Float -> Double-Float))
   (define (to-double x)
-    (lisp Double-Float (x)
+    (lisp (-> Double-Float) (x)
       (cl:coerce x 'cl:double-float)))
 
   (declare to-single (Double-Float -> Single-Float))
   (define (to-single x)
-    (lisp Single-Float (x)
+    (lisp (-> Single-Float) (x)
       (cl:coerce x 'cl:single-float)))
 
-  (declare clamp (Ord :n => :n -> :n -> :n -> :n))
+  (declare clamp (Ord :n => :n * :n * :n -> :n))
   (define (clamp min-val max-val x)
     "Clamp X between MIN-VAL and MAX-VAL (inclusive)."
     (min max-val (max min-val x)))
 
-  (declare contains? (Eq :a => :a -> List :a -> Boolean))
+  (declare contains? (Eq :a => :a * List :a -> Boolean))
   (define (contains? elt lst)
     (match (l:elemindex elt lst)
       ((Some _) True)
       ((None) False)))
 
-  (declare contains-where? ((:a -> Boolean) -> List :a -> Boolean))
+  (declare contains-where? ((:a -> Boolean) * List :a -> Boolean))
   (define (contains-where? f lst)
     (match lst
       ((Nil) False)
@@ -100,16 +103,17 @@
            True
            (contains-where? f rem)))))
 
-  (declare filterM (Applicative :m => (:a -> :m Boolean) -> List :a -> :m (List :a)))
+  (declare filterM (Applicative :m => (:a -> :m Boolean) * List :a -> :m (List :a)))
   (define (filterM m? lst)
     (foldr
-     (fn (elt)
+     (fn (elt accum)
        (liftA2
-        (fn (keep?)
+        (fn (keep? accum)
           (if keep?
-              (Cons elt)
-              id))
-        (m? elt)))
+              (Cons elt accum)
+              accum))
+        (m? elt)
+        accum))
      (pure Nil)
      lst))
 
@@ -135,25 +139,35 @@
   )
 
 (coalton-toplevel
-  (declare <*> (Applicative :f => :f (:a -> :b) -> :f :a -> :f :b))
-  (define <*> (liftA2 id)))
-
-(cl:defun liftAn_ (f rest)
-  (cl:let ((len (cl:length rest)))
-    (cl:cond
-      ((cl:< len 1) (cl:error "liftAn requires one or more terms!"))
-      ((cl:eq len 1)
-       `(map ,f ,@rest))
-      ((cl:eq len 2)
-       `(liftA2 ,f ,@rest))
-      (cl:t
-       (cl:let* ((flipped (cl:reverse rest))
-                 (elt (cl:car flipped))
-                 (rem (cl:reverse (cl:cdr flipped))))
-         `(<*> ,(liftAn_ f rem) ,elt))))))
+  (declare <*> (Applicative :f => :f (:a -> :b) * :f :a -> :f :b))
+  (define (<*> fa->b fa)
+    (liftA2 (fn (a->b a)
+              (a->b a))
+            fa->b
+            fa)))
 
 (cl:defmacro liftAn (f cl:&rest rest)
-  (liftAn_ f rest))
+  (cl:let ((len (cl:length rest)))
+    (cl:cond
+      ((cl:< len 1)
+       (cl:error "liftAn requires one or more terms!"))
+      ((cl:= len 1)
+       `(map ,f ,@rest))
+      ((cl:= len 2)
+       `(liftA2 ,f ,@rest))
+      (cl:t
+       (cl:let* ((args (cl:loop :repeat len :collect (cl:gensym "ARG-")))
+                 (body `(,f ,@args)))
+         (cl:loop :for arg :in (cl:reverse (cl:cddr args))
+                  :do (cl:setf body `(fn (,arg) ,body)))
+         (cl:let ((expr `(liftA2
+                          (fn (,(cl:first args) ,(cl:second args))
+                            ,body)
+                          ,(cl:first rest)
+                          ,(cl:second rest))))
+           (cl:loop :for term :in (cl:cddr rest)
+                    :do (cl:setf expr `(<*> ,expr ,term)))
+           expr))))))
 
 (coalton-toplevel
 
@@ -173,7 +187,7 @@
   (define (proxy-of-arg_ _)
     t:Proxy)
 
-  (declare proxy-of-arg2 ((:a -> :b -> :c) -> t:Proxy :b))
+  (declare proxy-of-arg2 ((:a * :b -> :c) -> t:Proxy :b))
   (define (proxy-of-arg2 _)
     t:Proxy)
 
@@ -234,3 +248,19 @@
   (define (as-proxy-of-right _)
     t:Proxy)
   )
+
+(defmacro foreach ((variable iter) cl:&body body)
+  "Perform `body` with `variable` bound to each element in `iter`.
+
+`iter` must have a valid `IntoIter` instance."
+  (cl:let ((iter-sym (cl:gensym "iter"))
+           (item?-sym (cl:gensym "item?")))
+   `(let ((,iter-sym (it:into-iter ,iter)))
+      (for ((,item?-sym (it:next! ,iter-sym) (it:next! ,iter-sym)))
+        (match ,item?-sym
+          ((Some ,variable)
+           ,@body
+           Unit)
+          ((None)
+           (break)
+           Unit))))))

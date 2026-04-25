@@ -5,13 +5,15 @@
    #:coalton-prelude
    #:coalton-library/classes
    #:coalton-library/experimental/do-control-core
-   #:coalton-library/experimental/do-control-loops
    #:io/monad-io
    #:io/simple-io
    #:ecs/utils
    )
   (:import-from #:io/mut
-   #:MonadIoVar)
+   #:MutableVar)
+  (:import-from #:coalton-library/experimental/do-control-loops
+   #:do-foreach
+   )
   (:local-nicknames
    (:l #:coalton-library/list)
    (:t #:coalton-library/types)
@@ -155,12 +157,12 @@
   (define-type-alias (SystemT :w :m :a) (ev:EnvT :w :m :a))
   (define-type-alias (System :w :a) (SystemT :w IO :a))
 
-  (declare run-system (SystemT :w :m :a -> :w -> :m :a))
+  (declare run-system (SystemT :w :m :a * :w -> :m :a))
   (define run-system
     "Run a system in a game world."
     ev:run-envT)
 
-  (declare run-with (:w -> SystemT :w :m :a -> :m :a))
+  (declare run-with (:w * SystemT :w :m :a -> :m :a))
   (define (run-with world sys)
     "Run a system in a game world."
     (ev:run-envT sys world))
@@ -182,12 +184,12 @@
   ;; TODO: Possible to remove proxy here?
   (define-class ((Monad :m) (Component :s :c) => ExplGet :m :s :c (:s -> :c))
     "Stores that components can be read from."
-    (expl-get (:s -> EntityId -> :m :c))
-    (expl-exists? (:s -> EntityId -> :m Boolean)))
+    (expl-get (:s * EntityId -> :m :c))
+    (expl-exists? (:s * EntityId -> :m Boolean)))
 
   (define-class ((Monad :m) (Component :s :c) => ExplSet :m :s :c (:s -> :c))
     "Stores that components can be written to."
-    (expl-set (:s -> EntityId -> :c -> :m Unit)))
+    (expl-set (:s * EntityId * :c -> :m Unit)))
 
   (define-class ((Monad :m) (Component :s :c) => ExplMembers :m :s :c (:s -> :c))
     "Stores that contain a list of member entities."
@@ -196,12 +198,12 @@
 
   (define-class ((Monad :m) (Component :s :c) => ExplDestroy :m :s :c (:s -> :c))
     "Stores that components can be removed from."
-    (expl-remove (:s -> EntityId -> t:Proxy :c -> :m Unit)))
+    (expl-remove (:s * EntityId * t:Proxy :c -> :m Unit)))
 
   ;; TODO: Might be able to either drop Component here or the fundep
   (define-class ((Monad :m) (Component :s :c) => Has :w :m :s :c (:w :c -> :s))
     (get-store
-     (Unit -> SystemT :w :m :s)))
+     (Void -> SystemT :w :m :s)))
 
   (define-class ((Has :w :m :s :c) (ExplGet :m :s :c)
                  => HasGet :w :m :s :c (:w :c -> :s) (:w :s -> :c)))
@@ -243,7 +245,7 @@
      (lift (expl-get s id))))
 
   (declare exists?_ ((Has :w :m :s :c) (ExplGet :m :s :c)
-                     => Entity -> t:Proxy :c -> SystemT :w :m Boolean))
+                     => Entity * t:Proxy :c -> SystemT :w :m Boolean))
   (define (exists?_ ety comp-prx)
     "Check if ETY has a given component."
     (do
@@ -252,7 +254,7 @@
      (s <- (t:as-proxy-of (get-store) (proxy-outer s-prx)))
      (lift (expl-exists? s id))))
 
-  (declare expl-get? (ExplGet :m :s :c => :s -> EntityId -> :m (Optional :c)))
+  (declare expl-get? (ExplGet :m :s :c => :s * EntityId -> :m (Optional :c)))
   (define (expl-get? store ety-id)
     (do
      (has-c? <- (expl-exists? store ety-id))
@@ -282,7 +284,7 @@
      (lift (expl-members s))))
 
   (declare set ((Has :w :m :s :c) (ExplSet :m :s :c)
-                => Entity -> :c -> SystemT :w :m Unit))
+                => Entity * :c -> SystemT :w :m Unit))
   (define (set ety comp)
     "Set COMP on ETY."
     (do
@@ -291,7 +293,7 @@
      (lift (expl-set s id comp))))
 
   (declare remove_ ((Has :w :m :s :c) (ExplDestroy :m :s :c)
-                    => Entity -> t:Proxy :c -> SystemT :w :m Unit))
+                    => Entity * t:Proxy :c -> SystemT :w :m Unit))
   (define (remove_ ety comp-prx)
     "Remove COMP from ETY."
     (do
@@ -301,7 +303,7 @@
 
   (declare modify ((Has :w :m :sa :ca) (Has :w :m :sb :cb)
                    (ExplGet :m :sa :ca) (ExplSet :m :sb :cb)
-                   => Entity -> (:ca -> :cb) -> SystemT :w :m Unit))
+                   => Entity * (:ca -> :cb) -> SystemT :w :m Unit))
   (define (modify ety f)
     "Attempt to modify the component on ETY using F, if possible."
     ;; TODO: Get the fused version working, it'll be faster.
@@ -369,8 +371,8 @@
        (m-op a))))
 
   ;; TODO: Rewrite without internal mutation
-  (declare cfold ((MonadIoVar :m) (HasGetMembers :w :m :s :c)
-                  => (:a -> :c -> :a) -> :a -> SystemT :w :m :a))
+  (declare cfold ((MutableVar :m) (HasGetMembers :w :m :s :c)
+                  => (:a * :c -> :a) * :a -> SystemT :w :m :a))
   (define (cfold f init-val)
     "Fold over the game world."
     (do
@@ -415,9 +417,11 @@ function. Order of the first entity returned depends on the underlying
 store. The primary use-case is to retrieve entities that have a
 component stored in a Unique store, along with other components on that entity.
 Errors if nothing matches."
-    (map (opt:from-some "Could not find matching entity.") (cquery f)))
+    (map (fn (x)
+           (opt:from-some "Could not find matching entity." x))
+         (cquery f)))
 
-  (declare cquery-or (HasGetMembers :w :m :s :c => :a -> (:c -> Optional :a) -> SystemT :w :m :a))
+  (declare cquery-or (HasGetMembers :w :m :s :c => :a * (:c -> Optional :a) -> SystemT :w :m :a))
   (define (cquery-or def f)
     "Return the first component that matches the given test/processing
 function. Order of the first entity returned depends on the underlying
@@ -430,7 +434,7 @@ Returns DEF if nothing matches."
       ((Some res)
        (pure res))))
 
-  (declare collect ((MonadIoVar :m) (HasGetMembers :w :m :s :c) =>
+  (declare collect ((MutableVar :m) (HasGetMembers :w :m :s :c) =>
                     (:c -> Optional :a) -> SystemT :w :m (List :a)))
   (define (collect f)
     "Collect matching components into a list using the given test and/or
@@ -489,12 +493,12 @@ all matching components."
     "A placeholder entity used for getting global components."
     (Entity% 0))
 
-  (define-instance ((Initializable :c) (MonadIoVar :m) => ExplInit :m (Global :c))
+  (define-instance ((Initializable :c) (MutableVar :m) => ExplInit :m (Global :c))
     (define expl-init
       (map Global%
            (m:new-var init-empty))))
 
-  (define-instance ((MonadIoVar :m) (Component (Global :c) :c)
+  (define-instance ((MutableVar :m) (Component (Global :c) :c)
                     => ExplGet :m (Global :c) :c)
     (inline)
     (define (expl-get (Global% var) _)
@@ -503,7 +507,7 @@ all matching components."
     (define (expl-exists?  _ _)
       (pure True)))
 
-  (define-instance ((MonadIoVar :m) (Component (Global :c) :c)
+  (define-instance ((MutableVar :m) (Component (Global :c) :c)
                     => ExplSet :m (Global :c) :c)
     (inline)
     (define (expl-set (Global% var) _ comp)
@@ -520,12 +524,12 @@ all matching components."
     "A store that contains one or zero components."
     (Unique% (m:Var (Optional (Tuple EntityId :c)))))
 
-  (define-instance (MonadIoVar :m => ExplInit :m (Unique :c))
+  (define-instance (MutableVar :m => ExplInit :m (Unique :c))
     (define expl-init
       (map Unique%
            (m:new-var None))))
 
-  (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
+  (define-instance ((MutableVar :m) (Component (Unique :c) :c)
                     => ExplGet :m (Unique :c) :c)
     (define (expl-get (Unique% var) _)
       (do
@@ -545,7 +549,7 @@ all matching components."
          ((None)
           (pure False))))))
 
-  (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
+  (define-instance ((MutableVar :m) (Component (Unique :c) :c)
                     => ExplSet :m (Unique :c) :c)
     (inline)
     (define (expl-set (Unique% var) id comp)
@@ -553,7 +557,7 @@ all matching components."
        (m:write var (Some (Tuple id comp)))
        (pure Unit))))
 
-  (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
+  (define-instance ((MutableVar :m) (Component (Unique :c) :c)
                     => ExplMembers :m (Unique :c) :c)
     (inline)
     (define (expl-members (Unique% var))
@@ -565,7 +569,7 @@ all matching components."
          ((Some (Tuple ety-id _))
           (pure (make-list (Entity% ety-id))))))))
 
-  (define-instance ((MonadIoVar :m) (Component (Unique :c) :c)
+  (define-instance ((MutableVar :m) (Component (Unique :c) :c)
                     => ExplDestroy :m (Unique :c) :c)
     (define (expl-remove (Unique% var) id _)
       (do
@@ -582,12 +586,12 @@ all matching components."
   (define-type (MapStore :c)
     (MapStore% (m:Var (hm:HashMap EntityId :c))))
 
-  (define-instance (MonadIoVar :m => ExplInit :m (MapStore :c))
+  (define-instance (MutableVar :m => ExplInit :m (MapStore :c))
     (define expl-init
       (map MapStore%
            (m:new-var hm:empty))))
 
-  (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
+  (define-instance ((MutableVar :m) (Component (MapStore :c) :c)
                     => ExplGet :m (MapStore :c) :c)
     (define (expl-get (MapStore% var) id)
       (do
@@ -605,7 +609,7 @@ all matching components."
        (let comp? = (hm:lookup map id))
         (pure (opt:some? comp?)))))
 
-  (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
+  (define-instance ((MutableVar :m) (Component (MapStore :c) :c)
                     => ExplSet :m (MapStore :c) :c)
     (inline)
     (define (expl-set (MapStore% var) id comp)
@@ -614,7 +618,7 @@ all matching components."
        (m:write var (hm:insert map id comp))
         (pure Unit))))
 
-  (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
+  (define-instance ((MutableVar :m) (Component (MapStore :c) :c)
                     => ExplMembers :m (MapStore :c) :c)
     (inline)
     (define (expl-members (MapStore% var))
@@ -622,7 +626,7 @@ all matching components."
        (m <- (m:read var))
        (pure (map Entity% (it:collect! (hm:keys m)))))))
 
-  (define-instance ((MonadIoVar :m) (Component (MapStore :c) :c)
+  (define-instance ((MutableVar :m) (Component (MapStore :c) :c)
                     => ExplDestroy :m (MapStore :c) :c)
     (inline)
     (define (expl-remove (MapStore% var) id _)

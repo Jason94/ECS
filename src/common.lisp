@@ -153,27 +153,27 @@ Use the optional MaxVelocity component to limit entities' speed."
 that knows how to update based on elapsed time."
     (animation
      "Create a new animation from elapsed time -> :t, and optionally a finished function."
-     ((Double-Float -> :t) -> Optional (Double-Float -> :t -> Boolean) -> :a))
+     ((Double-Float -> :t) * Optional (Double-Float * :t -> Boolean) -> :a))
     (calculate
      "Previously elapsed time (since animation start) -> Result"
-     (:a -> Double-Float -> :t))
+     (:a * Double-Float -> :t))
     (f-finished?
      "An animation may emit that it is finished."
-     (:a -> Optional (Double-Float -> :t -> Boolean)))
+     (:a -> Optional (Double-Float * :t -> Boolean)))
     (set-f-finished?
      "Set that an animation is finished when (Elapsed Time -> Value -> Boolean)
 returns True."
-     (Optional (Double-Float -> :t -> Boolean) -> :a -> :a)))
+     (Optional (Double-Float * :t -> Boolean) * :a -> :a)))
 
   (define-type AnimationDiscrete
     (AnimationDiscrete (Double-Float -> Integer)
-                       (Optional (Double-Float -> Integer -> Boolean))))
+                       (Optional (Double-Float * Integer -> Boolean))))
 
   (define-instance (Animated AnimationDiscrete Integer)
     (define animation AnimationDiscrete)
     (inline)
-    (define (calculate (AnimationDiscrete f _))
-      f)
+    (define (calculate (AnimationDiscrete f _) x)
+      (f x))
     (inline)
     (define (f-finished? (AnimationDiscrete _ fin?))
       fin?)
@@ -182,13 +182,13 @@ returns True."
 
   (define-type Animation1D
     (Animation1D (Double-Float -> Double-Float)
-                 (Optional (Double-Float -> Double-Float -> Boolean))))
+                 (Optional (Double-Float * Double-Float -> Boolean))))
 
   (define-instance (Animated Animation1D Double-Float)
     (define animation Animation1D)
     (inline)
-    (define (calculate (Animation1D f _))
-      f)
+    (define (calculate (Animation1D f _) x)
+      (f x))
     (inline)
     (define (f-finished? (Animation1D _ fin?))
       fin?)
@@ -197,27 +197,27 @@ returns True."
 
   (define-type Animation2D
     (Animation2D (Double-Float -> Vector2)
-                 (Optional (Double-Float -> Vector2 -> Boolean))))
+                 (Optional (Double-Float * Vector2 -> Boolean))))
 
   (define-instance (Animated Animation2D Vector2)
     (define animation Animation2D)
     (inline)
-    (define (calculate (Animation2D f _))
-      f)
+    (define (calculate (Animation2D f _) x)
+      (f x))
     (inline)
     (define (f-finished? (Animation2D _ fin?))
       fin?)
     (define (set-f-finished? fin? (Animation2D f _))
       (Animation2D f fin?)))
 
-  (declare finished? (Animated :a :t => Double-Float -> :t -> :a -> Boolean))
+  (declare finished? (Animated :a :t => Double-Float * :t * :a -> Boolean))
   (define (finished? elapsed-time val anim)
     "Check if ANIM is finished at ELAPSED-TIME and VAL."
     (match (f-finished? anim)
       ((None) False)
       ((Some f-fin?) (f-fin? elapsed-time val))))
 
-  (declare finished-when (Animated :a :t => (Double-Float -> :t -> Boolean) -> :a -> :a))
+  (declare finished-when (Animated :a :t => (Double-Float * :t -> Boolean) * :a -> :a))
   (define (finished-when f-finished anim)
      "Set that an animation is finished when (Elapsed Time -> Value -> Boolean)
 returns True."
@@ -236,7 +236,7 @@ components with the same animation type."
     (value :t)
     (elapsed-time Double-Float))
 
-  (declare compose-animation ((Animated :a1 Double-Float) (Animated :a2 :t2) => :a2 -> :a1 -> :a2))
+  (declare compose-animation ((Animated :a1 Double-Float) (Animated :a2 :t2) => :a2 * :a1 -> :a2))
   (define (compose-animation f g)
     "Return animation calculating f(g(elapsed-time)). Is finished when either
 animation is finished."
@@ -268,8 +268,7 @@ animation is finished."
      0.0d0))
 
   (declare update-animation (Animated :a :t
-                             => Double-Float -> AnimationComponent :a :t :c
-                             -> AnimationComponent :a :t :c))
+                             => Double-Float * AnimationComponent :a :t :c -> AnimationComponent :a :t :c))
   (define (update-animation delta-time anim-comp)
     "Update the internal elapsed time and calculate the new value for an animation component."
     (let new-elapsed-time = (+ (.elapsed-time anim-comp) delta-time))
@@ -320,7 +319,7 @@ animation is finished."
        (sqrt elapsed-time))
      None))
 
-  (declare lerp-1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (declare lerp-1d (Double-Float * Double-Float * Double-Float -> Animation1D))
   (define (lerp-1d x-start x-end tot-time)
     "An animation that goes from X-START to X-END in TOT-TIME, then keeps
 going at the same rate."
@@ -330,7 +329,7 @@ going at the same rate."
        (+ x-start (* prop (- x-end x-start))))
      None))
 
-  (declare lerp-clamped-1d (Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (declare lerp-clamped-1d (Double-Float * Double-Float * Double-Float -> Animation1D))
   (define (lerp-clamped-1d x-start x-end tot-time)
     "An animation that goes from X-START to X-END in TOT-TIME, then stops at X-END."
     (Animation1D
@@ -342,7 +341,7 @@ going at the same rate."
            x-end))
      None))
 
-  (declare lerp-midpoint-1d (Double-Float -> Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (declare lerp-midpoint-1d (Double-Float * Double-Float * Double-Float * Double-Float -> Animation1D))
   (define (lerp-midpoint-1d x-start x-end start-val tot-time)
     "An animation that goes from START-VAL to X-END at the rate it would take to go
 from X-START to X-END in TOT-TIME. Keeps going past X-End at the same rate."
@@ -352,7 +351,7 @@ from X-START to X-END in TOT-TIME. Keeps going past X-End at the same rate."
        (+ start-val (* prop (- x-end x-start))))
      None))
 
-  (declare lerp-midpoint-clamped-1d (Double-Float -> Double-Float -> Double-Float -> Double-Float -> Animation1D))
+  (declare lerp-midpoint-clamped-1d (Double-Float * Double-Float * Double-Float * Double-Float -> Animation1D))
   (define (lerp-midpoint-clamped-1d x-start x-end start-val tot-time)
     "An animation that goes from START-VAL to X-END at the rate it would take to go
 from X-START to X-END in TOT-TIME. Stops at X-END."
@@ -369,7 +368,7 @@ from X-START to X-END in TOT-TIME. Stops at X-END."
           (+ start-val (* prop (- x-end x-start))))))
      None))
 
-  (declare linear-back-and-forth-2d (Vector2 -> Vector2 -> Double-Float -> Animation2D))
+  (declare linear-back-and-forth-2d (Vector2 * Vector2 * Double-Float -> Animation2D))
   (define (linear-back-and-forth-2d v-start v-end tot-time)
     "An animation that goes from V-START to V-END in TOT-TIME, then back
 from V-END to V-START in TOT-TIME, then repeats."

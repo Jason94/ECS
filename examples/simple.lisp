@@ -9,18 +9,20 @@
    #:io/term
    #:io/simple-io
    #:ecs
-   #:ecs/utils
-   )
-  (:local-nicknames
-   )
+   #:ecs/utils)
+  (:export
+   #:play)
   )
 
 (in-package :ecs-example)
 
 (named-readtables:in-readtable coalton:coalton)
 
-(coalton-toplevel
+;;;; This simple example doesn't do any graphics, input, etc. It just shows
+;;;; how you can set up a basic world with a few entities/components, manipulate
+;;;; those, and print to the terminal based on the game world.
 
+(coalton-toplevel
 
   (derive Eq)
   (repr :transparent)
@@ -31,13 +33,8 @@
   (define (get-score (Score s))
     s)
 
-  (define-instance (Semigroup Score)
-    (define (<> a b)
-      (Score
-       (+ (get-score a) (get-score b)))))
-
-  (define-instance (Monoid Score)
-    (define mempty (Score 0)))
+  (define-instance (Initializable Score)
+    (define init-empty (Score 0)))
 
   (define-instance (Component (Global Score) Score))
 
@@ -63,43 +60,15 @@
   ;;;               World               ;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (define-type World
-    (World (Global EntityCounter) (Global Score) (MapStore Reward) (MapStore Message)))
+  (define-world World
+    ((Global EntityCounter)
+     (Global Score)
+     (MapStore Reward)
+     (MapStore Message)))
 
-  (define-instance (Monad :m => Has World :m (Global EntityCounter) EntityCounter)
-    (inline)
-    (define (get-store)
-      (do
-       ((World store _ _ _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (Global Score) Score)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ store _ _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (MapStore Reward) Reward)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ _ store _) <- ask-envT)
-       (pure store))))
-
-  (define-instance (Monad :m => Has World :m (MapStore Message) Message)
-    (inline)
-    (define (get-store)
-      (do
-       ((World _ _ _ store) <- ask-envT)
-       (pure store))))
-
-  (declare init-world (IO World))
-  (define init-world (liftAn World expl-init expl-init expl-init expl-init))
-
-  ;;;
-  ;;; Program
-  ;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;              Program              ;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (define-type-alias (System_ :a) (System World :a))
 
@@ -146,12 +115,10 @@
        reward-and-greet
        report))))
 
-  (declare run-main (Unit -> Unit))
+  (declare run-main (Void -> Unit))
   (define (run-main)
     (run-io! main))
   )
 
 (cl:defun play ()
   (call-coalton-function run-main))
-
-(play)

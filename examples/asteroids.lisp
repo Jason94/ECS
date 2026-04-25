@@ -6,7 +6,6 @@
    #:coalton-library/classes
    #:coalton-library/monad/environment
    #:coalton-library/experimental/do-control-core
-   #:coalton-library/experimental/do-control-loops
    #:io/monad-io
    #:io/term
    #:io/simple-io
@@ -15,15 +14,20 @@
    #:ecs/utils
    #:ecs/vectors
    #:ecs/common-components
-   #:ecs/raylib
-   )
+   #:ecs/raylib)
+  (:import-from #:coalton-library/experimental/do-control-loops
+   #:do-foreach
+   #:do-loop-times
+   #:do-loop-do-while)
   (:local-nicknames
-   (:mut #:io/mut)
-   )
+   (:mut #:io/mut))
+  (:export
+   #:play)
   )
 
 (in-package :ecs-asteroids)
 
+(cl:declaim (cl:optimize (cl:speed 0) (cl:debug 3) (cl:safety 3)))
 (named-readtables:in-readtable coalton:coalton)
 
 ;;;;
@@ -228,7 +232,7 @@
      (fn ((Tuple (Angle a) (Player)))
        (Angle (+ a x)))))
 
-  (declare spawn-bullet (Vector2 -> Vector2 -> System_ Unit))
+  (declare spawn-bullet (Vector2 * Vector2 -> System_ Unit))
   (define (spawn-bullet pos vel)
     (new-entity_
      (Tuple4
@@ -244,7 +248,7 @@
     (do-cforeach (Tuple3 (Player) (Position p) (Angle a))
       (spawn-bullet p (v-rot a (vec2 0 bullet-speed)))))
 
-  (declare spawn-asteroid (Vector2 -> Vector2 -> System_ Unit))
+  (declare spawn-asteroid (Vector2 * Vector2 -> System_ Unit))
   (define (spawn-asteroid pos vel)
     (new-entity_
      (Tuple4
@@ -253,7 +257,7 @@
       (DrawShape asteroid-bounding-circle (color :black) Fill)
       Asteroid)))
 
-  (declare spawn-random-asteroid (Integer -> Integer -> System_ Unit))
+  (declare spawn-random-asteroid (Integer * Integer -> System_ Unit))
   (define (spawn-random-asteroid width height)
     "Spawn an asteroid in a random location inside of WIDTH and HEIGHT."
     (do
@@ -265,7 +269,7 @@
      (let vel = (v-rot vel-ang (vec2 0.0 (+ speed-offset asteroid-min-speed))))
      (spawn-asteroid (vec2 (to-float x) (to-float y)) vel)))
 
-  (declare wrap (Integer -> Integer -> System_ Unit))
+  (declare wrap (Integer * Integer -> System_ Unit))
   (define (wrap width height)
     (cmap
      (fn ((Position p))
@@ -316,11 +320,11 @@
        (do-cforeach (Tuple3 (Bullet) ety2 (Position p2))
          (do-when (check-collision-circles p1 asteroid-radius p2 bullet-radius)
            increment-score
-           (mut:modify etys-to-remove (Cons ety1))
-           (mut:modify etys-to-remove (Cons ety2)))))
-      (etys-to-remove <- (mut:read etys-to-remove))
-      (do-foreach (ety etys-to-remove)
-        (remove-entity ety))))
+           (mut:modify etys-to-remove (fn (l) (Cons ety1 l)))
+           (mut:modify etys-to-remove (fn (l) (Cons ety2 l))))))
+     (etys-to-remove <- (mut:read etys-to-remove))
+     (do-foreach (ety etys-to-remove)
+       (remove-entity ety))))
 
   (declare check-game-over (System_ Boolean))
   (define check-game-over
@@ -402,7 +406,8 @@
      (ents-to-remove <- (mut:new-var Nil))
      (do-cforeach (Tuple obj ety)
        (let _ = (the (Either (Either Player Asteroid) Bullet) obj))
-       (mut:modify ents-to-remove (Cons ety)))
+       (mut:modify ents-to-remove (fn (l)
+                                    (Cons ety l))))
      (ents-to-remove <- (mut:read ents-to-remove))
      (do-foreach (ety ents-to-remove)
        (remove-entity ety))
@@ -547,9 +552,9 @@ to transition into, or NONE to stay in the same mode."
 
 (coalton-toplevel
 
-  (declare should-close (System_ Boolean))
-  (define should-close
-    window-should-close)
+  (declare should-continue (System_ Boolean))
+  (define should-continue
+    window-should-not-close)
 
   (declare main (IO Unit))
   (define main
@@ -557,18 +562,18 @@ to transition into, or NONE to stay in the same mode."
       (w <- init-world)
       (do-run-with w
         enter-game-mode
-        (do-loop-do-while should-close
+        (do-loop-do-while should-continue
           (next-mode? <- loop-game-mode)
           (do-when-val (next-mode next-mode?)
             cleanup-game-mode
             (set global-ent next-mode)
             enter-game-mode)))))
 
-  (declare run-main (Unit -> Unit))
+  (declare run-main (Void -> Void))
   (define (run-main)
-    (run-io! main)))
+    (run-io! main)
+    (values)))
 
 (cl:defun play ()
   (call-coalton-function run-main))
 
-(play)
