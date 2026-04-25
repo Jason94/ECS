@@ -554,8 +554,7 @@ to transition into, or NONE to stay in the same mode."
 
   (declare should-continue (System_ Boolean))
   (define should-continue
-    (map not
-         window-should-close))
+    window-should-not-close)
 
   (declare main (IO Unit))
   (define main

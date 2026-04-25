@@ -27,5 +27,6 @@
   :components ((:module "examples"
                 :components
                 ((:file "asteroids")
+                 (:file "textures")
                  )))
   )

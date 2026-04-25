@@ -75,6 +75,7 @@
    #:with-window
    #:do-with-window
    #:window-should-close
+   #:window-should-not-close
 
    #:show-cursor
    #:hide-cursor
@@ -526,6 +527,12 @@
     (wrap-io
       (lisp (-> Boolean) ()
         (rl:window-should-close))))
+
+  (declare window-should-not-close (MonadIo :m => :m Boolean))
+  (define window-should-not-close
+    (wrap-io
+      (lisp (-> Boolean) ()
+        (cl:not (rl:window-should-close)))))
 
   (declare with-window (UnliftIO :m IO => WindowConfig * :m :a -> :m Unit))
   (define (with-window (WindowConfig w h title fps) m-op)
