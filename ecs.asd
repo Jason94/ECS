@@ -26,7 +26,8 @@
   :depends-on ("ecs")
   :components ((:module "examples"
                 :components
-                ((:file "asteroids")
+                ((:file "simple")
+                 (:file "asteroids")
                  (:file "textures")
                  )))
   )
